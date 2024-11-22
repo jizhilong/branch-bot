@@ -40,7 +40,7 @@ Light-Merge solves these problems by providing:
 ### Basic Usage
 
 1. Create an issue in your GitLab project with the label: **light-merge**
-2. Add branches using the command: `!lm add <branch_name>` or `!lm !<merge_request_id>`
+2. Add branches using the command: `!lm add <branch_name>` or `!lm !<merge_request_iid>`
 3. View the current light-merge status with: `!lm status`
 
 ### Available Commands
@@ -51,7 +51,7 @@ Light-Merge solves these problems by providing:
 | `!lm add <branch/!mr-id>` | Add or update a branch/merge request |
 | `!lm remove <branch/!mr-id>` | Remove a branch/merge request |
 | `!lm reset [--base master]` | Reset light-merge to specified base branch |
-| `!lm deploy` | Deploy the merged result |
+| `!lm set-ci-checks <job-name1> <job-name2>...` | Set required CI jobs that must pass before a branch can be merged |
 | `!lm fork` | Create new light-merge issue with current state |
 
 ### CI/CD Integration
@@ -71,7 +71,7 @@ Light-Merge is built on several key principles for effective branch management:
 1. **Prevent Conflicts, Don't Just Resolve Them**: Focus on code organization and clear ownership to minimize conflicts
 2. **Last Update Responsibility**: The last team to update their branch is responsible for resolving conflicts
 3. **Non-Destructive Operations**: Failed merges don't corrupt the testing branch
-4. **Freedom to Exit**: Any branch can be removed from testing at any time
+4. **Freedom to Exit**: Any branch can be removed from testing branch at any time
 5. **Explicit State**: The final merge commit always shows which branches are included
 
 ## License
