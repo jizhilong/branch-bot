@@ -1,22 +1,64 @@
 package models
 
+import (
+	"fmt"
+	"strings"
+)
+
 // GitRef represents a git reference (branch or commit)
 type GitRef struct {
 	Name   string // branch name or commit SHA
 	Commit string // commit SHA
 }
 
-// MergeFailure represents a merge conflict
-type MergeFailure struct {
-	Path         string // conflicted file path
-	ConflictType string // type of conflict (content, delete, etc)
-	Detail       string // detailed conflict information
+// FileMergeConflict represents a merge conflict in a specific file
+type FileMergeConflict struct {
+	Path           string // conflicted file path
+	ConflictType   string // type of conflict (content, delete, etc)
+	ConflictDetail string // detailed conflict information
 }
 
-// MergeResult represents the result of a merge operation
-type MergeResult struct {
-	Success      bool           // whether merge succeeded
-	Ref          *GitRef        // if success, the resulting ref
-	Failures     []MergeFailure // if failed, the conflicts
-	FailedBranch string         // if failed, which branch caused the failure
+// GitMergeFailResult represents a failed merge operation
+type GitMergeFailResult struct {
+	Cmdline          string              // the git command that was executed
+	Stdout           string              // command stdout
+	Stderr           string              // command stderr
+	Status           string              // command exit status
+	FailedFiles      []FileMergeConflict // files with conflicts
+	ConflictBranches []string            // branches that conflict with the new branch
+}
+
+// AsMarkdown formats the merge result as markdown
+func (r *GitMergeFailResult) AsMarkdown() string {
+	messages := []string{}
+
+	// Add merge failure summary
+	messages = append(messages, "\n<details><summary>合并失败</summary>\n\n"+
+		fmt.Sprintf("**命令行**: \n```\n%s\n```\n\n", r.Cmdline)+
+		fmt.Sprintf("**stdout**: \n```\n%s\n```\n\n", r.Stdout)+
+		fmt.Sprintf("**stderr**: \n```\n%s\n```\n", r.Stderr)+
+		"</details>")
+
+	// Add conflict branches if any
+	if len(r.ConflictBranches) > 0 {
+		newBranch := r.ConflictBranches[len(r.ConflictBranches)-1]
+		conflictBranches := strings.Join(r.ConflictBranches[:len(r.ConflictBranches)-1], ", ")
+		messages = append(messages, fmt.Sprintf("\n**和 `%s` conflicted branches**: `%s`\n", newBranch, conflictBranches))
+	}
+
+	// Add conflict details
+	if len(r.FailedFiles) > 0 {
+		messages = append(messages, "\n**冲突列表**: \n")
+		for _, file := range r.FailedFiles {
+			if len(file.ConflictDetail) < 20000 {
+				messages = append(messages, fmt.Sprintf("\n<details><summary>%s: %s</summary>\n\n```diff\n%s\n```\n</details>",
+					file.Path, file.ConflictType, file.ConflictDetail))
+			} else {
+				messages = append(messages, fmt.Sprintf("\n<details><summary>%s: %s</summary>\n\ndiff too large, not shown\n</details>",
+					file.Path, file.ConflictType))
+			}
+		}
+	}
+
+	return strings.Join(messages, "\n")
 }
