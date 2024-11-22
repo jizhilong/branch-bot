@@ -1,6 +1,10 @@
 package models
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
 
 // MergeTrain represents a testing branch and its composition.
 //
@@ -48,4 +52,31 @@ func (mt *MergeTrain) RemoveMember(branch string) {
 		}
 	}
 	mt.Members = newMembers
+}
+
+// GenerateCommitMessage creates a commit message for the light-merge branch
+func (mt *MergeTrain) GenerateCommitMessage() (string, error) {
+	data, err := json.MarshalIndent(mt, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize MergeTrain: %w", err)
+	}
+
+	return fmt.Sprintf("Light-Merge State\n\n%s", string(data)), nil
+}
+
+// LoadFromCommitMessage parses a commit message to reconstruct a MergeTrain
+func LoadFromCommitMessage(projectID int64, issueIID int, message string) (*MergeTrain, error) {
+	lines := strings.Split(message, "\n")
+	if len(lines) < 2 || !strings.HasPrefix(lines[0], "Light-Merge State") {
+		return nil, fmt.Errorf("invalid commit message format")
+	}
+
+	var mt MergeTrain
+	if err := json.Unmarshal([]byte(strings.Join(lines[2:], "\n")), &mt); err != nil {
+		return nil, fmt.Errorf("failed to deserialize MergeTrain: %w", err)
+	}
+
+	mt.ProjectID = projectID
+	mt.IssueIID = issueIID
+	return &mt, nil
 }
