@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// Initialize GitLab client
-	client, err := gitlab.NewClient(cfg.GitLab.URL, cfg.GitLab.Token)
+	_, err = gitlab.NewClient(cfg.GitLab.URL, cfg.GitLab.Token)
 	if err != nil {
 		slog.Error("Failed to create GitLab client", "error", err)
 		os.Exit(1)
@@ -31,7 +31,7 @@ func main() {
 
 	slog.Info("Light-merge starting up...",
 		"gitlab_url", cfg.GitLab.URL,
-		"server_port", cfg.Server.Port,
-		"client", client)
+		"server_port", cfg.Server.Port)
+
 	// TODO: Start HTTP server
 }
