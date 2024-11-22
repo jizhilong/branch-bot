@@ -2,7 +2,7 @@
 
 Light-Merge is a GitLab-based branch management tool that helps teams safely merge multiple feature branches into a testing branch. It operates entirely through GitLab issue comments, providing a lightweight, conflict-aware approach to managing parallel development workflows.
 
-![Light Merge Workflow](/docs/images/light-merge-workflow.png)
+![Light Merge Workflow](/docs/images/light-merge-workflow.jpg)
 
 ## Key Features
 
@@ -51,7 +51,6 @@ Light-Merge solves these problems by providing:
 | `!lm add <branch/!mr-id>` | Add or update a branch/merge request |
 | `!lm remove <branch/!mr-id>` | Remove a branch/merge request |
 | `!lm reset [--base master]` | Reset light-merge to specified base branch |
-| `!lm set-ci-checks <job-name1> <job-name2>...` | Set required CI jobs that must pass before a branch can be merged |
 | `!lm fork` | Create new light-merge issue with current state |
 
 ### CI/CD Integration
