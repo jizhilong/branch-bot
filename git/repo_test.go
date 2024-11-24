@@ -2,7 +2,6 @@ package git
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -16,18 +15,16 @@ func setupTestRepo(t *testing.T) (*Repo, func()) {
 	tmpDir, err := os.MkdirTemp("", "light-merge-test-*")
 	require.NoError(t, err)
 
+	// Create repo instance first so we can use execCommand
+	repo, err := New(tmpDir)
+	require.NoError(t, err)
+
 	// Initialize git repo
-	cmd := exec.Command("git", "init")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
+	require.NoError(t, repo.execCommand("git", "init").Run())
 
 	// Configure git
-	cmd = exec.Command("git", "config", "user.name", "test")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-	cmd = exec.Command("git", "config", "user.email", "test@example.com")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
+	require.NoError(t, repo.execCommand("git", "config", "user.name", "test").Run())
+	require.NoError(t, repo.execCommand("git", "config", "user.email", "test@example.com").Run())
 
 	// Create initial commit
 	f, err := os.Create(filepath.Join(tmpDir, "README.md"))
@@ -36,16 +33,8 @@ func setupTestRepo(t *testing.T) (*Repo, func()) {
 	require.NoError(t, err)
 	f.Close()
 
-	cmd = exec.Command("git", "add", "README.md")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-
-	repo, err := New(tmpDir)
-	require.NoError(t, err)
+	require.NoError(t, repo.execCommand("git", "add", "README.md").Run())
+	require.NoError(t, repo.execCommand("git", "commit", "-m", "Initial commit").Run())
 
 	cleanup := func() {
 		os.RemoveAll(tmpDir)
@@ -56,14 +45,10 @@ func setupTestRepo(t *testing.T) (*Repo, func()) {
 
 func createBranch(t *testing.T, repo *Repo, base *models.GitRef, name, file, content string) *models.GitRef {
 	// Reset to base commit
-	cmd := exec.Command("git", "reset", "--hard", base.Commit)
-	cmd.Dir = repo.path
-	require.NoError(t, cmd.Run())
+	require.NoError(t, repo.execCommand("git", "reset", "--hard", base.Commit).Run())
 
 	// Create a new branch
-	cmd = exec.Command("git", "checkout", "-b", name)
-	cmd.Dir = repo.path
-	require.NoError(t, cmd.Run())
+	require.NoError(t, repo.execCommand("git", "checkout", "-b", name).Run())
 
 	// Create a file
 	f, err := os.Create(filepath.Join(repo.path, file))
@@ -73,13 +58,8 @@ func createBranch(t *testing.T, repo *Repo, base *models.GitRef, name, file, con
 	f.Close()
 
 	// Add and commit
-	cmd = exec.Command("git", "add", file)
-	cmd.Dir = repo.path
-	require.NoError(t, cmd.Run())
-
-	cmd = exec.Command("git", "commit", "-m", "Add "+file)
-	cmd.Dir = repo.path
-	require.NoError(t, cmd.Run())
+	require.NoError(t, repo.execCommand("git", "add", file).Run())
+	require.NoError(t, repo.execCommand("git", "commit", "-m", "Add "+file).Run())
 
 	// Get commit hash
 	hash, err := repo.RevParse("HEAD")

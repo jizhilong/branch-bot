@@ -24,11 +24,16 @@ func New(path string) (*Repo, error) {
 	return &Repo{path: absPath}, nil
 }
 
+// execCommand creates and executes a git command in the repo directory
+func (r *Repo) execCommand(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = r.path
+	return cmd
+}
+
 // RevParse returns the commit hash for the given revision
 func (r *Repo) RevParse(rev string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", rev)
-	cmd.Dir = r.path
-	output, err := cmd.Output()
+	output, err := r.execCommand("git", "rev-parse", rev).Output()
 	if err != nil {
 		return "", fmt.Errorf("git rev-parse failed: %w", err)
 	}
@@ -45,49 +50,45 @@ func (r *Repo) RevParse(rev string) (string, error) {
 //   - Then tries to merge the last commit
 //   - If second phase fails, checks which branches conflict with the last one
 func (r *Repo) Merge(base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
-	// If there's only one commit, return it directly
+	// Early return for empty commits
 	if len(commits) == 0 {
 		return base, nil
 	}
 
-	// First try direct merge
-	ref, fail := r.doMerge(base, commits...)
-	if ref != nil {
+	// Try direct merge first
+	if ref, fail := r.doMerge(base, commits...); ref != nil {
 		return ref, nil
+	} else if len(commits) == 1 {
+		return nil, fail
 	}
 
-	// If direct merge fails with multiple commits, try two-phase merge
-	if len(commits) > 1 {
-		// First merge all commits except the last one
-		previousRef, previousFail := r.doMerge(base, commits[:len(commits)-1]...)
-		if previousRef != nil {
-			// Then try to merge the last commit
-			finalRef, finalFail := r.doMerge(previousRef, commits[len(commits)-1])
-			if finalRef != nil {
-				return finalRef, nil
-			}
-			// If second phase fails, check which branches conflict with the last one
-			for _, commit := range commits[:len(commits)-1] {
-				if r.checkConflict(commits[len(commits)-1], commit) {
-					finalFail.ConflictBranches = append(finalFail.ConflictBranches, commit.Name)
-				}
-			}
-			// Add the new branch as the last conflict branch
-			finalFail.ConflictBranches = append(finalFail.ConflictBranches, commits[len(commits)-1].Name)
-			return nil, finalFail
-		}
+	// Try two-phase merge for multiple commits
+	previousRef, previousFail := r.doMerge(base, commits[:len(commits)-1]...)
+	if previousRef == nil {
 		return nil, previousFail
 	}
 
-	return nil, fail
+	// Try merging the last commit
+	finalRef, finalFail := r.doMerge(previousRef, commits[len(commits)-1])
+	if finalRef != nil {
+		return finalRef, nil
+	}
+
+	// Check which branches conflict with the last one
+	lastCommit := commits[len(commits)-1]
+	for _, commit := range commits[:len(commits)-1] {
+		if r.checkConflict(lastCommit, commit) {
+			finalFail.ConflictBranches = append(finalFail.ConflictBranches, commit.Name)
+		}
+	}
+	finalFail.ConflictBranches = append(finalFail.ConflictBranches, lastCommit.Name)
+	return nil, finalFail
 }
 
 // doMerge performs the actual merge operation
 func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
 	// Reset to base commit
-	cmd := exec.Command("git", "reset", "--hard", base.Commit)
-	cmd.Dir = r.path
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if output, err := r.execCommand("git", "reset", "--hard", base.Commit).CombinedOutput(); err != nil {
 		return nil, &models.GitMergeFailResult{
 			Cmdline: fmt.Sprintf("git reset --hard %s", base.Commit),
 			Stdout:  string(output),
@@ -104,8 +105,7 @@ func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.
 	cmdline := fmt.Sprintf("git %s", strings.Join(args, " "))
 
 	// Execute merge
-	cmd = exec.Command("git", args...)
-	cmd.Dir = r.path
+	cmd := r.execCommand("git", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Get conflict details
@@ -121,9 +121,7 @@ func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.
 				path := strings.TrimSpace(strings.Split(parts[1], " in ")[1])
 
 				// Get diff for the conflicted file
-				diffCmd := exec.Command("git", "diff", path)
-				diffCmd.Dir = r.path
-				diff, _ := diffCmd.Output()
+				diff, _ := r.execCommand("git", "diff", path).Output()
 
 				conflicts = append(conflicts, models.FileMergeConflict{
 					Path:           path,
@@ -134,9 +132,7 @@ func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.
 		}
 
 		// Clean up
-		cleanCmd := exec.Command("git", "reset", "--hard", base.Commit)
-		cleanCmd.Dir = r.path
-		cleanCmd.Run() // Ignore cleanup errors
+		r.execCommand("git", "reset", "--hard", base.Commit).Run() // Ignore cleanup errors
 
 		return nil, &models.GitMergeFailResult{
 			Cmdline:     cmdline,
@@ -166,26 +162,18 @@ func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.
 // checkConflict checks if two branches have conflicts
 func (r *Repo) checkConflict(base, other *models.GitRef) bool {
 	// Reset to base commit
-	cmd := exec.Command("git", "reset", "--hard", base.Commit)
-	cmd.Dir = r.path
-	if err := cmd.Run(); err != nil {
+	if err := r.execCommand("git", "reset", "--hard", base.Commit).Run(); err != nil {
 		return false
 	}
 
 	// Try merge without committing
-	cmd = exec.Command("git", "merge", "--no-ff", "--no-commit", other.Commit)
-	cmd.Dir = r.path
-	if err := cmd.Run(); err != nil {
+	if err := r.execCommand("git", "merge", "--no-ff", "--no-commit", other.Commit).Run(); err != nil {
 		// Clean up
-		abortCmd := exec.Command("git", "merge", "--abort")
-		abortCmd.Dir = r.path
-		abortCmd.Run() // Ignore cleanup errors
+		r.execCommand("git", "merge", "--abort").Run() // Ignore cleanup errors
 		return true
 	}
 
 	// Clean up
-	abortCmd := exec.Command("git", "merge", "--abort")
-	abortCmd.Dir = r.path
-	abortCmd.Run() // Ignore cleanup errors
+	r.execCommand("git", "merge", "--abort").Run() // Ignore cleanup errors
 	return false
 }
