@@ -2,11 +2,10 @@ package git
 
 import (
 	"fmt"
+	"github.com/jizhilong/light-merge/models"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/jizhilong/light-merge/models"
 )
 
 // Repo represents a Git repository
@@ -49,27 +48,27 @@ func (r *Repo) RevParse(rev string) (string, error) {
 //   - First merges all commits except the last one
 //   - Then tries to merge the last commit
 //   - If second phase fails, checks which branches conflict with the last one
-func (r *Repo) Merge(base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
+func (r *Repo) Merge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
 	// Early return for empty commits
 	if len(commits) == 0 {
 		return base, nil
 	}
 
 	// Try direct merge first
-	if ref, fail := r.doMerge(base, commits...); ref != nil {
+	if ref, fail := r.doMerge(message, base, commits...); ref != nil {
 		return ref, nil
 	} else if len(commits) == 1 {
 		return nil, fail
 	}
 
 	// Try two-phase merge for multiple commits
-	previousRef, previousFail := r.doMerge(base, commits[:len(commits)-1]...)
+	previousRef, previousFail := r.doMerge("partial", base, commits[:len(commits)-1]...)
 	if previousRef == nil {
 		return nil, previousFail
 	}
 
 	// Try merging the last commit
-	finalRef, finalFail := r.doMerge(previousRef, commits[len(commits)-1])
+	finalRef, finalFail := r.doMerge(message, previousRef, commits[len(commits)-1])
 	if finalRef != nil {
 		return finalRef, nil
 	}
@@ -86,7 +85,7 @@ func (r *Repo) Merge(base *models.GitRef, commits ...*models.GitRef) (*models.Gi
 }
 
 // doMerge performs the actual merge operation
-func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
+func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
 	// Reset to base commit
 	if output, err := r.execCommand("git", "reset", "--hard", base.Commit).CombinedOutput(); err != nil {
 		return nil, &models.GitMergeFailResult{
@@ -98,7 +97,7 @@ func (r *Repo) doMerge(base *models.GitRef, commits ...*models.GitRef) (*models.
 	}
 
 	// Prepare merge command
-	args := []string{"merge", "--no-ff"}
+	args := []string{"merge", "--no-ff", "-m", message}
 	for _, c := range commits {
 		args = append(args, c.Commit)
 	}
@@ -176,4 +175,26 @@ func (r *Repo) checkConflict(base, other *models.GitRef) bool {
 	// Clean up
 	r.execCommand("git", "merge", "--abort").Run() // Ignore cleanup errors
 	return false
+}
+
+// GetCommitMessage returns the commit message for the given commit
+func (r *Repo) GetCommitMessage(commit string) (string, error) {
+	cmd := r.execCommand("git", "log", "-1", "--pretty=format:%B", commit)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get commit message: %w", err)
+	}
+	return string(output), nil
+}
+
+// EnsureBranch ensures a branch exists and points to the specified commit.
+// If the branch doesn't exist, it will be created.
+// If the branch exists but points to a different commit, it will be updated.
+func (r *Repo) EnsureBranch(name string, commit string) error {
+	// Try to create or update the branch
+	cmd := r.execCommand("git", "branch", "-f", name, commit)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to ensure branch %s at %s: %s: %w", name, commit, output, err)
+	}
+	return nil
 }

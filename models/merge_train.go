@@ -64,6 +64,14 @@ func (mt *MergeTrain) GenerateCommitMessage() (string, error) {
 	return fmt.Sprintf("Light-Merge State\n\n%s", string(data)), nil
 }
 
+// GenerateCommitMessageWithNewMemberSet creates a commit message for the light-merge branch with new members, but don't add them to the merge train
+func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTrainItem) (string, error) {
+	originalMembers := mt.Members
+	defer func() { mt.Members = originalMembers }()
+	mt.Members = originalMembers
+	return mt.GenerateCommitMessage()
+}
+
 // LoadFromCommitMessage parses a commit message to reconstruct a MergeTrain
 func LoadFromCommitMessage(projectID int64, issueIID int, message string) (*MergeTrain, error) {
 	lines := strings.Split(message, "\n")
