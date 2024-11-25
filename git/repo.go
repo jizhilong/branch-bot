@@ -2,10 +2,11 @@ package git
 
 import (
 	"fmt"
-	"github.com/jizhilong/light-merge/models"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/jizhilong/light-merge/models"
 )
 
 // Repo represents a Git repository
@@ -197,4 +198,9 @@ func (r *Repo) EnsureBranch(name string, commit string) error {
 		return fmt.Errorf("failed to ensure branch %s at %s: %s: %w", name, commit, output, err)
 	}
 	return nil
+}
+
+// Path returns the absolute path to the repository
+func (r *Repo) Path() string {
+	return r.path
 }
