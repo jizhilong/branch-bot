@@ -58,15 +58,10 @@ func (r *Repo) RevParse(rev string) (string, error) {
 //   - Then tries to merge the last commit
 //   - If second phase fails, checks which branches conflict with the last one
 func (r *Repo) Merge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
-	// Early return for empty commits
-	if len(commits) == 0 {
-		return base, nil
-	}
-
 	// Try direct merge first
 	if ref, fail := r.doMerge(message, base, commits...); ref != nil {
 		return ref, nil
-	} else if len(commits) == 1 {
+	} else if len(commits) <= 1 {
 		return nil, fail
 	}
 
@@ -108,6 +103,29 @@ func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.G
 		// No matter merge success or not, keep the working directory clean
 		_ = r.execCommand("git", "reset", "--hard", "HEAD").Run()
 	}()
+	// Early return for empty commits
+	if len(commits) == 0 {
+		if output, err := r.execCommand("git", "commit", "--allow-empty", "-m", message).CombinedOutput(); err != nil {
+			return nil, &models.GitMergeFailResult{
+				Cmdline: fmt.Sprintf("git commit --allow-empty -m %q", message),
+				Stdout:  string(output),
+				Stderr:  err.Error(),
+				Status:  "commit failed",
+			}
+		}
+		hash, err := r.RevParse("HEAD")
+		if err != nil {
+			return nil, &models.GitMergeFailResult{
+				Cmdline: "git rev-parse HEAD",
+				Stderr:  err.Error(),
+				Status:  "rev-parse failed",
+			}
+		}
+		return &models.GitRef{
+			Name:   "HEAD",
+			Commit: hash,
+		}, nil
+	}
 
 	// Prepare merge command
 	args := []string{"merge", "--no-ff", "-m", message}

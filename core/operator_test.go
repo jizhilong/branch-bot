@@ -189,32 +189,30 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 				Members:    make([]models.MergeTrainItem, 0),
 			},
 		}
+		addAndCheckLoaded := func(name string) {
+			result, fail := operator.Add(name)
+			require.NotNil(t, result)
+			require.Nil(t, fail)
+			// Load the merge train
+			loadedOperator, err := LoadMergeTrainOperator(123, 456, testRepo.Path())
+			require.NoError(t, err)
+			assert.NotNil(t, loadedOperator)
+			assert.Equal(t, operator.mergeTrain.ProjectID, loadedOperator.mergeTrain.ProjectID)
+			assert.Equal(t, operator.mergeTrain.IssueIID, loadedOperator.mergeTrain.IssueIID)
+			assert.Equal(t, operator.mergeTrain.BranchName, loadedOperator.mergeTrain.BranchName)
+			assert.Equal(t, len(operator.mergeTrain.Members), len(loadedOperator.mergeTrain.Members))
+			for i, member := range operator.mergeTrain.Members {
+				assert.Equal(t, member.Branch, loadedOperator.mergeTrain.Members[i].Branch)
+				assert.Equal(t, member.MergedCommit, loadedOperator.mergeTrain.Members[i].MergedCommit)
+			}
+		}
 
 		// Add some branches
 		_ = testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
 		_ = testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
-		result, fail := operator.Add("main")
-		require.NotNil(t, result)
-		require.Nil(t, fail)
-		result, fail = operator.Add("feature1")
-		require.NotNil(t, result)
-		require.Nil(t, fail)
-		result, fail = operator.Add("feature2")
-		require.NotNil(t, result)
-		require.Nil(t, fail)
-
-		// Load the merge train
-		loadedOperator, err := LoadMergeTrainOperator(123, 456, testRepo.Path())
-		require.NoError(t, err)
-		assert.NotNil(t, loadedOperator)
-		assert.Equal(t, operator.mergeTrain.ProjectID, loadedOperator.mergeTrain.ProjectID)
-		assert.Equal(t, operator.mergeTrain.IssueIID, loadedOperator.mergeTrain.IssueIID)
-		assert.Equal(t, operator.mergeTrain.BranchName, loadedOperator.mergeTrain.BranchName)
-		assert.Equal(t, len(operator.mergeTrain.Members), len(loadedOperator.mergeTrain.Members))
-		for i, member := range operator.mergeTrain.Members {
-			assert.Equal(t, member.Branch, loadedOperator.mergeTrain.Members[i].Branch)
-			assert.Equal(t, member.MergedCommit, loadedOperator.mergeTrain.Members[i].MergedCommit)
-		}
+		addAndCheckLoaded("main")
+		addAndCheckLoaded("feature1")
+		addAndCheckLoaded("feature2")
 	})
 
 	t.Run("load with invalid repo path", func(t *testing.T) {

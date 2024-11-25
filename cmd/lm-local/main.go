@@ -17,12 +17,6 @@ const (
 )
 
 func main() {
-	// Initialize logger
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
-
 	// Get current directory as git repo
 	repoPath, err := os.Getwd()
 	if err != nil {
@@ -109,13 +103,6 @@ func getOrCreateIssueID(repoPath string) (int, error) {
 		return 0, fmt.Errorf("failed to read issue ID file: %w", err)
 	}
 
-	// Create .git directory if not exists
-	gitDir := filepath.Join(repoPath, ".git")
-	if err := os.MkdirAll(gitDir, 0755); err != nil {
-		return 0, fmt.Errorf("failed to create .git directory: %w", err)
-	}
-
-	// Generate new ID (current timestamp)
 	id := 1
 	if err := os.WriteFile(idPath, []byte(strconv.Itoa(id)), 0644); err != nil {
 		return 0, fmt.Errorf("failed to write issue ID file: %w", err)
