@@ -68,7 +68,7 @@ func (mt *MergeTrain) GenerateCommitMessage() (string, error) {
 func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTrainItem) (string, error) {
 	originalMembers := mt.Members
 	defer func() { mt.Members = originalMembers }()
-	mt.Members = originalMembers
+	mt.Members = newMembers
 	return mt.GenerateCommitMessage()
 }
 

@@ -45,6 +45,10 @@ func NewTestRepo(t *testing.T) *TestRepo {
 	cmd = r.execCommand("git", "commit", "-m", "Initial commit")
 	require.NoError(t, cmd.Run())
 
+	// make sure the initial branch name is main
+	cmd = r.execCommand("git", "branch", "-m", "main")
+	require.NoError(t, cmd.Run())
+
 	t.Cleanup(func() {
 		os.RemoveAll(tmpDir)
 	})
@@ -54,12 +58,8 @@ func NewTestRepo(t *testing.T) *TestRepo {
 
 // CreateBranch creates a new branch with a test file
 func (r *TestRepo) CreateBranch(base *models.GitRef, name, file, content string) *models.GitRef {
-	// Reset to base commit
-	cmd := r.execCommand("git", "reset", "--hard", base.Commit)
-	require.NoError(r.t, cmd.Run())
-
 	// Create a new branch
-	cmd = r.execCommand("git", "checkout", "-b", name)
+	cmd := r.execCommand("git", "checkout", base.Commit, "-b", name)
 	require.NoError(r.t, cmd.Run())
 
 	// Create a file

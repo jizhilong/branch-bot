@@ -135,3 +135,73 @@ func (o *MergeTrainOperator) Add(branchName string) (*models.GitRef, *models.Git
 
 	return mergeResult, nil
 }
+
+// Remove removes a branch from the merge train and updates the light-merge branch
+func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
+	// Check if branch exists in merge train
+	var branchIndex = -1
+	for i, member := range o.mergeTrain.Members {
+		if member.Branch == branchName {
+			branchIndex = i
+			break
+		}
+	}
+	if branchIndex == -1 {
+		return nil, &models.GitMergeFailResult{
+			Cmdline: fmt.Sprintf("check branch %s", branchName),
+			Stderr:  "branch not found in merge train",
+			Status:  "not found",
+		}
+	}
+
+	// Create a copy of current members without the branch to remove
+	currentMembers := make([]models.MergeTrainItem, 0, len(o.mergeTrain.Members)-1)
+	currentMembers = append(currentMembers, o.mergeTrain.Members[:branchIndex]...)
+	currentMembers = append(currentMembers, o.mergeTrain.Members[branchIndex+1:]...)
+
+	// If no members left after removal, return nil
+	if len(currentMembers) == 0 {
+		o.mergeTrain.Members = currentMembers
+		return nil, nil
+	}
+
+	// Prepare refs for merge
+	refs := make([]*models.GitRef, 0, len(currentMembers))
+	for _, member := range currentMembers {
+		refs = append(refs, &models.GitRef{
+			Name:   member.Branch,
+			Commit: member.MergedCommit,
+		})
+	}
+
+	// Generate commit message
+	message, err := o.mergeTrain.GenerateCommitMessageWithNewMemberSet(currentMembers)
+	if err != nil {
+		return nil, &models.GitMergeFailResult{
+			Cmdline: "generate commit message",
+			Stderr:  err.Error(),
+			Status:  "internal error",
+		}
+	}
+
+	// Try to merge remaining branches
+	mergeResult, mergeErr := o.repo.Merge(message, refs[0], refs[1:]...)
+	if mergeErr != nil {
+		return nil, mergeErr
+	}
+
+	// Update merge train state
+	o.mergeTrain.Members = currentMembers
+
+	// Update the light-merge branch
+	err = o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
+	if err != nil {
+		return nil, &models.GitMergeFailResult{
+			Cmdline: fmt.Sprintf("git branch -f %s %s", o.mergeTrain.BranchName, mergeResult.Commit),
+			Stderr:  err.Error(),
+			Status:  "failed to update branch",
+		}
+	}
+
+	return mergeResult, nil
+}

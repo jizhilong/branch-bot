@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,13 @@ func New(path string) (*Repo, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Check if absPath existed
+	if fileInfo, err := os.Stat(absPath); err != nil {
+		return nil, fmt.Errorf("failed to get repository info: %w", err)
+	} else if !fileInfo.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", absPath)
 	}
 
 	return &Repo{path: absPath}, nil
@@ -88,14 +96,18 @@ func (r *Repo) Merge(message string, base *models.GitRef, commits ...*models.Git
 // doMerge performs the actual merge operation
 func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
 	// Reset to base commit
-	if output, err := r.execCommand("git", "reset", "--hard", base.Commit).CombinedOutput(); err != nil {
+	if output, err := r.execCommand("git", "checkout", base.Commit).CombinedOutput(); err != nil {
 		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git reset --hard %s", base.Commit),
+			Cmdline: fmt.Sprintf("git checkout %s", base.Commit),
 			Stdout:  string(output),
 			Stderr:  err.Error(),
 			Status:  "reset failed",
 		}
 	}
+	defer func() {
+		// No matter merge success or not, keep the working directory clean
+		_ = r.execCommand("git", "reset", "--hard", "HEAD").Run()
+	}()
 
 	// Prepare merge command
 	args := []string{"merge", "--no-ff", "-m", message}
@@ -130,9 +142,6 @@ func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.G
 				})
 			}
 		}
-
-		// Clean up
-		r.execCommand("git", "reset", "--hard", base.Commit).Run() // Ignore cleanup errors
 
 		return nil, &models.GitMergeFailResult{
 			Cmdline:     cmdline,
