@@ -22,10 +22,8 @@ func TestSyncRepo(t *testing.T) {
 	defer os.RemoveAll(repoDir)
 
 	// Create a new Webhook instance
-	webhook := &Webhook{
-		repoDir: repoDir,
-		glToken: glToken,
-	}
+	webhook, err := NewWebhook(projectUrl, glToken, repoDir, 8080)
+	assert.NoError(t, err)
 
 	t.Run("syncRepo success", func(t *testing.T) {
 		// Test syncRepo function

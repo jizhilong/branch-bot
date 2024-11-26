@@ -77,8 +77,8 @@ type Webhook struct {
 	gl *gitlab.Client
 }
 
-// NewServer creates a new server instance
-func NewServer(gitlabUrl, gitlabToken, repoDir string, port int) (*Webhook, error) {
+// NewWebhook creates a new server instance
+func NewWebhook(gitlabUrl, gitlabToken, repoDir string, port int) (*Webhook, error) {
 	if port <= 0 {
 		return nil, errors.New("invalid port number")
 	}
