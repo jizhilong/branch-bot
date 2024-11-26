@@ -86,7 +86,7 @@ func (r *TestRepo) CreateBranch(base *models.GitRef, name, file, content string)
 	}
 }
 
-func (r *TestRepo) UpdateBranch(name, file, content string) {
+func (r *TestRepo) UpdateBranch(name, file, content string) *models.GitRef {
 	cmd := r.execCommand("git", "checkout", name)
 	require.NoError(r.t, cmd.Run())
 
@@ -105,6 +105,10 @@ func (r *TestRepo) UpdateBranch(name, file, content string) {
 	require.NoError(r.t, cmd.Run())
 
 	// Get commit hash
-	_, err = r.RevParse("HEAD")
+	commit, err := r.RevParse("HEAD")
 	require.NoError(r.t, err)
+	return &models.GitRef{
+		Name:   name,
+		Commit: commit,
+	}
 }

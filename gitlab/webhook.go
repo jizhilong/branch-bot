@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jizhilong/light-merge/core"
 	"github.com/jizhilong/light-merge/git"
+	"github.com/jizhilong/light-merge/models"
 	"github.com/xanzy/go-gitlab"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -179,7 +181,12 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 	switch c := cmd.(type) {
 	case *AddCommand:
 		logger = logger.With("branch", c.BranchName)
-		result, fail := operator.AddAndPush(c.BranchName)
+		ref, err := h.revParseRemote(event.ProjectID, c.BranchName)
+		if err != nil {
+			logger.Error("Failed to get remote ref", "error", err)
+			return
+		}
+		result, fail := operator.AddAndPush(ref)
 		if fail != nil {
 			logger.Error("Failed to add branch", "error", fail.AsMarkdown())
 			return
@@ -187,7 +194,12 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 		logger.Info("Successfully added branch", "commit", result.Commit)
 	case *RemoveCommand:
 		logger = logger.With("branch", c.BranchName)
-		result, fail := operator.RemoveAndPush(c.BranchName)
+		ref, err := h.revParseRemote(event.ProjectID, c.BranchName)
+		if err != nil {
+			logger.Error("Failed to get remote ref", "error", err)
+			return
+		}
+		result, fail := operator.RemoveAndPush(ref.Name)
 		if fail != nil {
 			logger.Error("Failed to remove branch", "error", fail.AsMarkdown())
 			return
@@ -207,6 +219,27 @@ func (h *Webhook) getOperator(projectId, issueIID int, pathWithNameSpace, projec
 		return nil, fmt.Errorf("failed to sync repository: %w", err)
 	} else {
 		return core.LoadMergeTrainOperator(projectId, issueIID, repo.Path())
+	}
+}
+
+func (h *Webhook) revParseRemote(projectId int, branchName string) (*models.GitRef, error) {
+	if strings.HasPrefix(branchName, "!") {
+		mrIdStr := strings.TrimPrefix(branchName, "!")
+		mrId, err := strconv.Atoi(mrIdStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid merge request ID: %w", err)
+		}
+		mr, _, err := h.gl.MergeRequests.GetMergeRequest(projectId, mrId, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get merge request: %w", err)
+		}
+		return &models.GitRef{Name: mr.SourceBranch, Commit: mr.DiffRefs.HeadSha}, nil
+	} else {
+		branch, _, err := h.gl.Branches.GetBranch(projectId, branchName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get branch: %w", err)
+		}
+		return &models.GitRef{Name: branchName, Commit: branch.Commit.ID}, nil
 	}
 }
 

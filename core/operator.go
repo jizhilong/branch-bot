@@ -56,9 +56,9 @@ func LoadMergeTrainOperator(projectID int, issueIID int, repoPath string) (*Merg
 }
 
 // AddAndPush adds a branch to the merge train and pushes the changes
-func (o *MergeTrainOperator) AddAndPush(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
+func (o *MergeTrainOperator) AddAndPush(ref *models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
 	// Add the branch to the merge train
-	mergeResult, fail := o.Add(branchName)
+	mergeResult, fail := o.Add(ref)
 	if fail != nil {
 		return nil, fail
 	}
@@ -77,30 +77,14 @@ func (o *MergeTrainOperator) AddAndPush(branchName string) (*models.GitRef, *mod
 }
 
 // Add adds or updates a branch in the merge train
-func (o *MergeTrainOperator) Add(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
-	// Get the commit hash for the branch
-	commit, err := o.repo.RevParse(branchName)
-	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git rev-parse %s", branchName),
-			Stderr:  err.Error(),
-			Status:  "branch not found",
-		}
-	}
-
-	// Create GitRef for the branch
-	ref := &models.GitRef{
-		Name:   branchName,
-		Commit: commit,
-	}
-
+func (o *MergeTrainOperator) Add(ref *models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
 	// Create a copy of current members
 	currentMembers := make([]models.MergeTrainItem, len(o.mergeTrain.Members))
 	copy(currentMembers, o.mergeTrain.Members)
 
 	// Remove the branch if it's already in the merge train
 	for i, member := range currentMembers {
-		if member.Branch == branchName {
+		if member.Branch == ref.Name {
 			// Remove this member
 			currentMembers = append(currentMembers[:i], currentMembers[i+1:]...)
 			break
@@ -108,8 +92,8 @@ func (o *MergeTrainOperator) Add(branchName string) (*models.GitRef, *models.Git
 	}
 	newMembers := append(currentMembers, models.MergeTrainItem{
 		ProjectID:    o.mergeTrain.ProjectID,
-		Branch:       branchName,
-		MergedCommit: commit,
+		Branch:       ref.Name,
+		MergedCommit: ref.Commit,
 	})
 
 	// Prepare refs for merge

@@ -29,8 +29,8 @@ func TestMergeTrainOperator_Add(t *testing.T) {
 
 	t.Run("add first branch", func(t *testing.T) {
 		// Create and add first branch
-		_ = testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
-		result, fail := operator.Add("feature1")
+		feature1 := testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
+		result, fail := operator.Add(feature1)
 		assert.NotNil(t, result)
 		assert.Nil(t, fail)
 		assert.Len(t, operator.mergeTrain.Members, 1)
@@ -39,8 +39,8 @@ func TestMergeTrainOperator_Add(t *testing.T) {
 
 	t.Run("add second branch without conflict", func(t *testing.T) {
 		// Create and add second branch
-		_ = testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
-		result, fail := operator.Add("feature2")
+		feature2 := testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
+		result, fail := operator.Add(feature2)
 		assert.NotNil(t, result)
 		assert.Nil(t, fail)
 		assert.Len(t, operator.mergeTrain.Members, 2)
@@ -49,8 +49,8 @@ func TestMergeTrainOperator_Add(t *testing.T) {
 
 	t.Run("update existing branch", func(t *testing.T) {
 		// Update feature1 with new content
-		testRepo.UpdateBranch("feature1", "file1.txt", "updated content")
-		result, fail := operator.Add("feature1")
+		feature1 := testRepo.UpdateBranch("feature1", "file1.txt", "updated content")
+		result, fail := operator.Add(feature1)
 		assert.NotNil(t, result)
 		assert.Nil(t, fail)
 		assert.Len(t, operator.mergeTrain.Members, 2)
@@ -60,23 +60,14 @@ func TestMergeTrainOperator_Add(t *testing.T) {
 
 	t.Run("add branch with conflict", func(t *testing.T) {
 		// Create a branch that conflicts with feature1
-		_ = testRepo.CreateBranch(base, "conflict", "file1.txt", "conflicting content")
-		result, fail := operator.Add("conflict")
+		conflict := testRepo.CreateBranch(base, "conflict", "file1.txt", "conflicting content")
+		result, fail := operator.Add(conflict)
 		assert.Nil(t, result)
 		assert.NotNil(t, fail)
 		// MergeTrain should remain unchanged
 		assert.Len(t, operator.mergeTrain.Members, 2)
 		assert.NotEmpty(t, fail.FailedFiles)
 		assert.Equal(t, "file1.txt", fail.FailedFiles[0].Path)
-	})
-
-	t.Run("add branch with non-existent base", func(t *testing.T) {
-		result, fail := operator.Add("non-existent-branch")
-		assert.Nil(t, result)
-		assert.NotNil(t, fail)
-		assert.Equal(t, "branch not found", fail.Status)
-		// MergeTrain should remain unchanged
-		assert.Len(t, operator.mergeTrain.Members, 2)
 	})
 }
 
@@ -100,18 +91,18 @@ func TestMergeTrainOperator_Remove(t *testing.T) {
 	base := &models.GitRef{Name: "main", Commit: baseHash}
 
 	// Create and add three branches
-	_ = testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
-	_ = testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
-	_ = testRepo.CreateBranch(base, "feature3", "file3.txt", "feature3 content")
+	feature1 := testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
+	feature2 := testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
+	feature3 := testRepo.CreateBranch(base, "feature3", "file3.txt", "feature3 content")
 
 	// Add branches to merge train
-	result, fail := operator.Add("feature1")
+	result, fail := operator.Add(feature1)
 	require.NotNil(t, result)
 	require.Nil(t, fail)
-	result, fail = operator.Add("feature2")
+	result, fail = operator.Add(feature2)
 	require.NotNil(t, result)
 	require.Nil(t, fail)
-	result, fail = operator.Add("feature3")
+	result, fail = operator.Add(feature3)
 	require.NotNil(t, result)
 	require.Nil(t, fail)
 
@@ -189,8 +180,8 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 				Members:    make([]models.MergeTrainItem, 0),
 			},
 		}
-		addAndCheckLoaded := func(name string) {
-			result, fail := operator.Add(name)
+		addAndCheckLoaded := func(ref *models.GitRef) {
+			result, fail := operator.Add(ref)
 			require.NotNil(t, result)
 			require.Nil(t, fail)
 			// Load the merge train
@@ -208,11 +199,11 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 		}
 
 		// Add some branches
-		_ = testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
-		_ = testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
-		addAndCheckLoaded("main")
-		addAndCheckLoaded("feature1")
-		addAndCheckLoaded("feature2")
+		feature1 := testRepo.CreateBranch(base, "feature1", "file1.txt", "feature1 content")
+		feature2 := testRepo.CreateBranch(base, "feature2", "file2.txt", "feature2 content")
+		addAndCheckLoaded(base)
+		addAndCheckLoaded(feature1)
+		addAndCheckLoaded(feature2)
 	})
 
 	t.Run("load with invalid repo path", func(t *testing.T) {
