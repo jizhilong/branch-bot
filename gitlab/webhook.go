@@ -179,7 +179,7 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 	switch c := cmd.(type) {
 	case *AddCommand:
 		logger = logger.With("branch", c.BranchName)
-		result, fail := operator.Add(c.BranchName)
+		result, fail := operator.AddAndPush(c.BranchName)
 		if fail != nil {
 			logger.Error("Failed to add branch", "error", fail.AsMarkdown())
 			return
@@ -187,7 +187,7 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 		logger.Info("Successfully added branch", "commit", result.Commit)
 	case *RemoveCommand:
 		logger = logger.With("branch", c.BranchName)
-		result, fail := operator.Remove(c.BranchName)
+		result, fail := operator.RemoveAndPush(c.BranchName)
 		if fail != nil {
 			logger.Error("Failed to remove branch", "error", fail.AsMarkdown())
 			return

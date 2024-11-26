@@ -244,6 +244,15 @@ func (r *Repo) RefreshRemote() error {
 	return nil
 }
 
+// PushRemote update a remote branch to a specified commit
+func (r *Repo) PushRemote(remote, branch, commit string) error {
+	cmd := r.execCommand("git", "push", "-f", remote, fmt.Sprintf("%s:%s", commit, branch))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to push to remote %s: %s: %w", remote, output, err)
+	}
+	return nil
+}
+
 // Config set a git config in the repository
 func (r *Repo) Config(key, value string) error {
 	cmd := r.execCommand("git", "config", "--local", key, value)

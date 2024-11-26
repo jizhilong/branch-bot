@@ -55,6 +55,27 @@ func LoadMergeTrainOperator(projectID int, issueIID int, repoPath string) (*Merg
 	}, nil
 }
 
+// AddAndPush adds a branch to the merge train and pushes the changes
+func (o *MergeTrainOperator) AddAndPush(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
+	// Add the branch to the merge train
+	mergeResult, fail := o.Add(branchName)
+	if fail != nil {
+		return nil, fail
+	}
+
+	// Push the changes
+	err := o.repo.PushRemote("origin", o.mergeTrain.BranchName, mergeResult.Commit)
+	if err != nil {
+		return nil, &models.GitMergeFailResult{
+			Cmdline: fmt.Sprintf("git push origin %s", o.mergeTrain.BranchName),
+			Stderr:  err.Error(),
+			Status:  "failed to push",
+		}
+	}
+
+	return mergeResult, nil
+}
+
 // Add adds or updates a branch in the merge train
 func (o *MergeTrainOperator) Add(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
 	// Get the commit hash for the branch
@@ -130,6 +151,27 @@ func (o *MergeTrainOperator) Add(branchName string) (*models.GitRef, *models.Git
 			Cmdline: fmt.Sprintf("git branch -f %s %s", o.mergeTrain.BranchName, mergeResult.Commit),
 			Stderr:  err.Error(),
 			Status:  "failed to update branch",
+		}
+	}
+
+	return mergeResult, nil
+}
+
+// RemoveAndPush removes a branch from the merge train and pushes the changes
+func (o *MergeTrainOperator) RemoveAndPush(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
+	// Remove the branch from the merge train
+	mergeResult, fail := o.Remove(branchName)
+	if fail != nil {
+		return nil, fail
+	}
+
+	// Push the changes
+	err := o.repo.PushRemote("origin", o.mergeTrain.BranchName, mergeResult.Commit)
+	if err != nil {
+		return nil, &models.GitMergeFailResult{
+			Cmdline: fmt.Sprintf("git push origin %s", o.mergeTrain.BranchName),
+			Stderr:  err.Error(),
+			Status:  "failed to push",
 		}
 	}
 
