@@ -11,7 +11,7 @@ import (
 // Note: Despite the similar name, this is NOT related to GitLab's Merge Train feature.
 // This is a tool for managing a testing branch composed of multiple feature branches.
 type MergeTrain struct {
-	ProjectID  int64
+	ProjectID  int
 	IssueIID   int
 	BranchName string
 	Members    []MergeTrainItem
@@ -19,13 +19,13 @@ type MergeTrain struct {
 
 // MergeTrainItem represents a member branch in merge train
 type MergeTrainItem struct {
-	ProjectID    int64  // GitLab project ID
+	ProjectID    int    // GitLab project ID
 	Branch       string // branch name
 	MergedCommit string // commit that has been merged into light-merge branch
 }
 
 // NewMergeTrain creates a new merge train
-func NewMergeTrain(projectID int64, issueIID int) *MergeTrain {
+func NewMergeTrain(projectID int, issueIID int) *MergeTrain {
 	return &MergeTrain{
 		ProjectID:  projectID,
 		IssueIID:   issueIID,
@@ -73,7 +73,7 @@ func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTr
 }
 
 // LoadFromCommitMessage parses a commit message to reconstruct a MergeTrain
-func LoadFromCommitMessage(projectID int64, issueIID int, message string) (*MergeTrain, error) {
+func LoadFromCommitMessage(projectID int, issueIID int, message string) (*MergeTrain, error) {
 	lines := strings.Split(message, "\n")
 	if len(lines) < 2 || !strings.HasPrefix(lines[0], "Light-Merge State") {
 		return nil, fmt.Errorf("invalid commit message format")

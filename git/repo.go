@@ -15,6 +15,14 @@ type Repo struct {
 	path string // absolute path to the repository
 }
 
+func Clone(url, path string) (*Repo, error) {
+	cmd := exec.Command("git", "clone", url, path)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("failed to clone repository: %s: %w", output, err)
+	}
+	return New(path)
+}
+
 // New creates a new Repo instance
 func New(path string) (*Repo, error) {
 	absPath, err := filepath.Abs(path)
@@ -223,6 +231,24 @@ func (r *Repo) EnsureBranch(name string, commit string) error {
 	cmd := r.execCommand("git", "branch", "-f", name, commit)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to ensure branch %s at %s: %s: %w", name, commit, output, err)
+	}
+	return nil
+}
+
+// RefreshRemote fetches the latest changes from the remote repository
+func (r *Repo) RefreshRemote() error {
+	cmd := r.execCommand("git", "fetch", "--all")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to fetch remote: %s: %w", output, err)
+	}
+	return nil
+}
+
+// Config set a git config in the repository
+func (r *Repo) Config(key, value string) error {
+	cmd := r.execCommand("git", "config", "--local", key, value)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set git config %s: %s: %w", key, output, err)
 	}
 	return nil
 }

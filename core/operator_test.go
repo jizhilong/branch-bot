@@ -172,7 +172,7 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 		operator, err := LoadMergeTrainOperator(123, 456, testRepo.Path())
 		require.NoError(t, err)
 		assert.NotNil(t, operator)
-		assert.Equal(t, int64(123), operator.mergeTrain.ProjectID)
+		assert.Equal(t, 123, operator.mergeTrain.ProjectID)
 		assert.Equal(t, 456, operator.mergeTrain.IssueIID)
 		assert.Equal(t, "auto/light-merge-456", operator.mergeTrain.BranchName)
 		assert.Empty(t, operator.mergeTrain.Members)

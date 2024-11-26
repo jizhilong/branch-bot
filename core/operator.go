@@ -14,7 +14,7 @@ type MergeTrainOperator struct {
 }
 
 // LoadMergeTrainOperator loads or creates a merge train operator
-func LoadMergeTrainOperator(projectID int64, issueIID int, repoPath string) (*MergeTrainOperator, error) {
+func LoadMergeTrainOperator(projectID int, issueIID int, repoPath string) (*MergeTrainOperator, error) {
 	// Initialize git repo
 	repo, err := git.New(repoPath)
 	if err != nil {
