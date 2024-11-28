@@ -19,6 +19,7 @@ import (
 
 type Command interface {
 	CommandName() string
+	String() string
 }
 
 type AddCommand struct {
@@ -29,8 +30,16 @@ func (c *AddCommand) CommandName() string {
 	return "add"
 }
 
+func (c *AddCommand) String() string {
+	return fmt.Sprintf("%s %s", c.CommandName(), c.BranchName)
+}
+
 type RemoveCommand struct {
 	BranchName string
+}
+
+func (c *RemoveCommand) String() string {
+	return fmt.Sprintf("%s %s", c.CommandName(), c.BranchName)
 }
 
 func (c *RemoveCommand) CommandName() string {
@@ -108,14 +117,17 @@ func (h *Webhook) Start() error {
 
 // handleWebhook handles GitLab webhook events
 func (h *Webhook) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	// always return 200 OK
+	defer func() {
+		w.WriteHeader(http.StatusOK)
+	}()
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	event, err := h.parseGitlabEvent(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Error("Failed to parse GitLab event", "error", err)
 		return
 	}
 
@@ -123,17 +135,16 @@ func (h *Webhook) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	case *gitlab.IssueCommentEvent:
 		cmd, err := ParseCommand(e.ObjectAttributes.Note)
 		if err != nil {
-			http.Error(w, "Invalid command", http.StatusBadRequest)
+			slog.Error("Invalid command", "error", err)
 			return
 		}
 		if cmd != nil {
 			h.HandleCommand(cmd, e)
 		}
 	default:
-		http.Error(w, "Event not supported", http.StatusBadRequest)
+		slog.Warn("Unknown event type", "type", fmt.Sprintf("%T", e))
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Webhook) parseGitlabEvent(r *http.Request) (interface{}, error) {
@@ -145,10 +156,6 @@ func (h *Webhook) parseGitlabEvent(r *http.Request) (interface{}, error) {
 			log.Printf("could not close request body: %v", err)
 		}
 	}()
-
-	if r.Method != http.MethodPost {
-		return nil, errors.New("invalid HTTP Method")
-	}
 
 	event := r.Header.Get("X-Gitlab-Event")
 	if strings.TrimSpace(event) == "" {
@@ -173,6 +180,7 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 		"project_id", event.ProjectID,
 		"issue_id", event.Issue.IID,
 	)
+	logger.Info("Handling command", "command", cmd.String())
 
 	operator, err := h.getOperator(event.ProjectID, event.Issue.IID,
 		event.Project.PathWithNamespace, event.Project.GitHTTPURL)
@@ -194,7 +202,7 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 			logger.Error("Failed to add branch", "error", fail.AsMarkdown())
 			return
 		}
-		logger.Info("Successfully added branch", "commit", result.Commit)
+		logger.Info("Successfully added branch", "result", result)
 	case *RemoveCommand:
 		logger = logger.With("branch", c.BranchName)
 		ref, err := h.revParseRemote(event.ProjectID, c.BranchName)
@@ -207,11 +215,7 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 			logger.Error("Failed to remove branch", "error", fail.AsMarkdown())
 			return
 		}
-		if result != nil {
-			logger.Info("Successfully removed branch", "commit", result.Commit)
-		} else {
-			logger.Info("Successfully removed branch")
-		}
+		logger.Info("Successfully removed branch", "result", result)
 	default:
 		logger.Error("Unknown command")
 	}

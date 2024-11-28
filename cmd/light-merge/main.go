@@ -9,12 +9,6 @@ import (
 )
 
 func main() {
-	// Initialize logger with JSON handler
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
-
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -26,6 +20,7 @@ func main() {
 		slog.Error("Failed to create webhook", "error", err)
 		os.Exit(1)
 	}
+	slog.Info("Starting webhook", "gitlab", cfg.GitlabUrl, "branchNamePrefix", cfg.BranchNamePrefix, "port", cfg.ListenPort)
 	err = webhook.Start()
 	if err != nil {
 		slog.Error("Failed to start webhook", "error", err)

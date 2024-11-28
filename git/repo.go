@@ -224,11 +224,16 @@ func (r *Repo) GetCommitMessage(commit string) (string, error) {
 }
 
 // EnsureBranch ensures a branch exists and points to the specified commit.
+// If the commit is empty, the branch will be deleted.
 // If the branch doesn't exist, it will be created.
 // If the branch exists but points to a different commit, it will be updated.
 func (r *Repo) EnsureBranch(name string, commit string) error {
-	// Try to create or update the branch
-	cmd := r.execCommand("git", "branch", "-f", name, commit)
+	var cmd *exec.Cmd
+	if commit == "" {
+		cmd = r.execCommand("git", "branch", "-D", name)
+	} else {
+		cmd = r.execCommand("git", "branch", "-f", name, commit)
+	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to ensure branch %s at %s: %s: %w", name, commit, output, err)
 	}

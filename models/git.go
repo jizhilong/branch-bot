@@ -11,6 +11,10 @@ type GitRef struct {
 	Commit string // commit SHA
 }
 
+func (r *GitRef) String() string {
+	return fmt.Sprintf("%s (%s)", r.Name, r.Commit)
+}
+
 // FileMergeConflict represents a merge conflict in a specific file
 type FileMergeConflict struct {
 	Path           string // conflicted file path

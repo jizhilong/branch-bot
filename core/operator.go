@@ -141,8 +141,16 @@ func (o *MergeTrainOperator) RemoveAndPush(branchName string) (*models.GitRef, *
 		return nil, fail
 	}
 
+	var pushCommit string
+	// If mergeResult is nil, it means the merge train is empty after removal, set pushCommit to empty string will delete the remote result branch
+	if mergeResult == nil {
+		pushCommit = ""
+	} else {
+		pushCommit = mergeResult.Commit
+	}
+
 	// Push the changes
-	err := o.repo.PushRemote("origin", o.mergeTrain.BranchName, mergeResult.Commit)
+	err := o.repo.PushRemote("origin", o.mergeTrain.BranchName, pushCommit)
 	if err != nil {
 		return nil, &models.GitMergeFailResult{
 			Cmdline: fmt.Sprintf("git push origin %s", o.mergeTrain.BranchName),
@@ -177,8 +185,16 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.
 	currentMembers = append(currentMembers, o.mergeTrain.Members[:branchIndex]...)
 	currentMembers = append(currentMembers, o.mergeTrain.Members[branchIndex+1:]...)
 
-	// If no members left after removal, return nil
+	// If no members left after removal, remove local result branch and return nil
 	if len(currentMembers) == 0 {
+		err := o.repo.EnsureBranch(o.mergeTrain.BranchName, "")
+		if err != nil {
+			return nil, &models.GitMergeFailResult{
+				Cmdline: fmt.Sprintf("git branch -D %s", o.mergeTrain.BranchName),
+				Stderr:  err.Error(),
+				Status:  "internal error",
+			}
+		}
 		o.mergeTrain.Members = currentMembers
 		return nil, nil
 	}
