@@ -258,7 +258,7 @@ func (h *Webhook) syncRepo(pathWithNameSpace, projectUrl string) (*git.Repo, err
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse project URL: %w", err)
 		}
-		cloneUrl := fmt.Sprintf("%s://light-merge:%s@%s/%s", u.Scheme, h.glToken, u.Host, u.Path)
+		cloneUrl := fmt.Sprintf("%s://light-merge:%s@%s%s", u.Scheme, h.glToken, u.Host, u.Path)
 		repo, err = git.Clone(cloneUrl, repoPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to clone repository: %w", err)

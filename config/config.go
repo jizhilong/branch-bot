@@ -6,40 +6,28 @@ import (
 )
 
 type Config struct {
-	GitLab GitLabConfig
-	Server ServerConfig
-}
-
-type GitLabConfig struct {
-	URL   string
-	Token string
-}
-
-type ServerConfig struct {
-	Port int
+	GitlabUrl     string
+	GitlabToken   string
+	RepoDirectory string
+	ListenPort    int
 }
 
 func Load() (*Config, error) {
-	gitlabURL := os.Getenv("LM_GITLAB_URL")
-	if gitlabURL == "" {
-		gitlabURL = "https://gitlab.com" // default value
+	config := &Config{
+		RepoDirectory: "/tmp/light-merge-builds",
+		ListenPort:    8181,
+		GitlabUrl:     os.Getenv("LM_GITLAB_URL"),
+		GitlabToken:   os.Getenv("LM_GITLAB_TOKEN"),
 	}
-
-	gitlabToken := os.Getenv("LM_GITLAB_TOKEN")
-	if gitlabToken == "" {
-		return nil, fmt.Errorf("LM_GITLAB_TOKEN environment variable is required")
+	var errors []string
+	if config.GitlabUrl == "" {
+		errors = append(errors, "LM_GITLAB_URL is required")
 	}
-
-	port := 8080 // default value
-	// TODO: add port configuration if needed
-
-	return &Config{
-		GitLab: GitLabConfig{
-			URL:   gitlabURL,
-			Token: gitlabToken,
-		},
-		Server: ServerConfig{
-			Port: port,
-		},
-	}, nil
+	if config.GitlabToken == "" {
+		errors = append(errors, "LM_GITLAB_TOKEN is required")
+	}
+	if len(errors) > 0 {
+		return nil, fmt.Errorf("missing required environment variables: %s", errors)
+	}
+	return config, nil
 }

@@ -21,17 +21,14 @@ func main() {
 		slog.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
 	}
-
-	// Initialize GitLab client
-	_, err = gitlab.NewClient(cfg.GitLab.URL, cfg.GitLab.Token)
+	webhook, err := gitlab.NewWebhook(cfg.GitlabUrl, cfg.GitlabToken, cfg.RepoDirectory, cfg.ListenPort)
 	if err != nil {
-		slog.Error("Failed to create GitLab client", "error", err)
+		slog.Error("Failed to create webhook", "error", err)
 		os.Exit(1)
 	}
-
-	slog.Info("Light-merge starting up...",
-		"gitlab_url", cfg.GitLab.URL,
-		"server_port", cfg.Server.Port)
-
-	// TODO: Start HTTP server
+	err = webhook.Start()
+	if err != nil {
+		slog.Error("Failed to start webhook", "error", err)
+		os.Exit(1)
+	}
 }

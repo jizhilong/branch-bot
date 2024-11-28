@@ -246,7 +246,7 @@ func (r *Repo) RefreshRemote() error {
 
 // PushRemote update a remote branch to a specified commit
 func (r *Repo) PushRemote(remote, branch, commit string) error {
-	cmd := r.execCommand("git", "push", "-f", remote, fmt.Sprintf("%s:%s", commit, branch))
+	cmd := r.execCommand("git", "push", "-f", remote, fmt.Sprintf("%s:refs/heads/%s", commit, branch))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to push to remote %s: %s: %w", remote, output, err)
 	}
