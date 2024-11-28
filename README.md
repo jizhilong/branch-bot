@@ -55,11 +55,11 @@ Light-Merge solves these problems by providing:
 
 ### CI/CD Integration
 
-Light-Merge automatically creates branches with the pattern `auto/light-merge-*`. You can configure GitLab CI to run specific jobs for these branches:
+Light-Merge automatically creates branches with the pattern `light-merges/\d+`. You can configure GitLab CI to run specific jobs for these branches:
 
 ```yaml
 rules:
-  - if: '$CI_COMMIT_BRANCH =~ /auto\/light\-merge\-.*/ && $CI_PIPELINE_SOURCE == "push"'
+  - if: '$CI_COMMIT_BRANCH =~ /light\-merges\/.*/ && $CI_PIPELINE_SOURCE == "push"'
     when: always
 ```
 

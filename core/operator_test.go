@@ -17,7 +17,7 @@ func TestMergeTrainOperator_Add(t *testing.T) {
 		mergeTrain: &models.MergeTrain{
 			ProjectID:  123,
 			IssueIID:   456,
-			BranchName: "auto/light-merge-456",
+			BranchName: "light-merges/456",
 			Members:    make([]models.MergeTrainItem, 0),
 		},
 	}
@@ -80,7 +80,7 @@ func TestMergeTrainOperator_Remove(t *testing.T) {
 		mergeTrain: &models.MergeTrain{
 			ProjectID:  123,
 			IssueIID:   456,
-			BranchName: "auto/light-merge-456",
+			BranchName: "light-merges/456",
 			Members:    make([]models.MergeTrainItem, 0),
 		},
 	}
@@ -154,29 +154,31 @@ func TestMergeTrainOperator_Remove(t *testing.T) {
 
 func TestLoadMergeTrainOperator(t *testing.T) {
 	testRepo := git.NewTestRepo(t)
+	repo := &testRepo.Repo
 	// Get base commit
 	baseHash, err := testRepo.RevParse("HEAD")
 	require.NoError(t, err)
 	base := &models.GitRef{Name: "main", Commit: baseHash}
+	branchName := "light-merges/456"
 
 	t.Run("load non-existent merge train", func(t *testing.T) {
-		operator, err := LoadMergeTrainOperator(123, 456, testRepo.Path())
+		operator, err := LoadMergeTrainOperator(repo, branchName, 123, 456)
 		require.NoError(t, err)
 		assert.NotNil(t, operator)
 		assert.Equal(t, 123, operator.mergeTrain.ProjectID)
 		assert.Equal(t, 456, operator.mergeTrain.IssueIID)
-		assert.Equal(t, "auto/light-merge-456", operator.mergeTrain.BranchName)
+		assert.Equal(t, branchName, operator.mergeTrain.BranchName)
 		assert.Empty(t, operator.mergeTrain.Members)
 	})
 
 	t.Run("load existing merge train", func(t *testing.T) {
 		// Create a merge train with some members
 		operator := &MergeTrainOperator{
-			repo: &testRepo.Repo,
+			repo: repo,
 			mergeTrain: &models.MergeTrain{
 				ProjectID:  123,
 				IssueIID:   456,
-				BranchName: "auto/light-merge-456",
+				BranchName: branchName,
 				Members:    make([]models.MergeTrainItem, 0),
 			},
 		}
@@ -185,7 +187,7 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 			require.NotNil(t, result)
 			require.Nil(t, fail)
 			// Load the merge train
-			loadedOperator, err := LoadMergeTrainOperator(123, 456, testRepo.Path())
+			loadedOperator, err := LoadMergeTrainOperator(repo, branchName, 123, 456)
 			require.NoError(t, err)
 			assert.NotNil(t, loadedOperator)
 			assert.Equal(t, operator.mergeTrain.ProjectID, loadedOperator.mergeTrain.ProjectID)
@@ -204,11 +206,5 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 		addAndCheckLoaded(base)
 		addAndCheckLoaded(feature1)
 		addAndCheckLoaded(feature2)
-	})
-
-	t.Run("load with invalid repo path", func(t *testing.T) {
-		operator, err := LoadMergeTrainOperator(123, 456, "/non/existent/path")
-		assert.Error(t, err)
-		assert.Nil(t, operator)
 	})
 }

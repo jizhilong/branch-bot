@@ -25,11 +25,11 @@ type MergeTrainItem struct {
 }
 
 // NewMergeTrain creates a new merge train
-func NewMergeTrain(projectID int, issueIID int) *MergeTrain {
+func NewMergeTrain(projectID int, issueIID int, branchName string) *MergeTrain {
 	return &MergeTrain{
 		ProjectID:  projectID,
 		IssueIID:   issueIID,
-		BranchName: fmt.Sprintf("auto/light-merge-%d", issueIID),
+		BranchName: branchName,
 		Members:    make([]MergeTrainItem, 0),
 	}
 }
@@ -73,7 +73,7 @@ func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTr
 }
 
 // LoadFromCommitMessage parses a commit message to reconstruct a MergeTrain
-func LoadFromCommitMessage(projectID int, issueIID int, message string) (*MergeTrain, error) {
+func LoadFromCommitMessage(message string) (*MergeTrain, error) {
 	lines := strings.Split(message, "\n")
 	if len(lines) < 2 || !strings.HasPrefix(lines[0], "Light-Merge State") {
 		return nil, fmt.Errorf("invalid commit message format")
@@ -84,7 +84,5 @@ func LoadFromCommitMessage(projectID int, issueIID int, message string) (*MergeT
 		return nil, fmt.Errorf("failed to deserialize MergeTrain: %w", err)
 	}
 
-	mt.ProjectID = projectID
-	mt.IssueIID = issueIID
 	return &mt, nil
 }

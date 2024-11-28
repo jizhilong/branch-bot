@@ -22,7 +22,7 @@ func TestSyncRepo(t *testing.T) {
 	defer os.RemoveAll(repoDir)
 
 	// Create a new Webhook instance
-	webhook, err := NewWebhook(projectUrl, glToken, repoDir, 8080)
+	webhook, err := NewWebhook(projectUrl, glToken, repoDir, "light-merges/", 8080)
 	assert.NoError(t, err)
 
 	t.Run("syncRepo success", func(t *testing.T) {

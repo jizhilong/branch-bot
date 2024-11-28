@@ -73,12 +73,14 @@ type Webhook struct {
 	repoDir string
 	// glToken is the GitLab access token
 	glToken string
+	// branchNamePrefix is the prefix for the output branch name
+	branchNamePrefix string
 	// gl is the GitLab client
 	gl *gitlab.Client
 }
 
 // NewWebhook creates a new server instance
-func NewWebhook(gitlabUrl, gitlabToken, repoDir string, port int) (*Webhook, error) {
+func NewWebhook(gitlabUrl, gitlabToken, repoDir, branchNamePrefix string, port int) (*Webhook, error) {
 	if port <= 0 {
 		return nil, errors.New("invalid port number")
 	}
@@ -90,10 +92,11 @@ func NewWebhook(gitlabUrl, gitlabToken, repoDir string, port int) (*Webhook, err
 		return nil, fmt.Errorf("failed to create gitlab client: %w", err)
 	}
 	return &Webhook{
-		port:    port,
-		repoDir: repoDir,
-		glToken: gitlabToken,
-		gl:      gl,
+		port:             port,
+		repoDir:          repoDir,
+		glToken:          gitlabToken,
+		branchNamePrefix: branchNamePrefix,
+		gl:               gl,
 	}, nil
 }
 
@@ -218,7 +221,8 @@ func (h *Webhook) getOperator(projectId, issueIID int, pathWithNameSpace, projec
 	if repo, err := h.syncRepo(pathWithNameSpace, projectUrl); err != nil {
 		return nil, fmt.Errorf("failed to sync repository: %w", err)
 	} else {
-		return core.LoadMergeTrainOperator(projectId, issueIID, repo.Path())
+		branchName := fmt.Sprintf("%s%d", h.branchNamePrefix, issueIID)
+		return core.LoadMergeTrainOperator(repo, branchName, projectId, issueIID)
 	}
 }
 

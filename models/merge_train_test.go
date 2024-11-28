@@ -6,7 +6,7 @@ import (
 
 func TestGenerateAndLoadCommitMessage(t *testing.T) {
 	// Create a new MergeTrain and add members
-	mtOriginal := NewMergeTrain(123, 456)
+	mtOriginal := NewMergeTrain(123, 456, "light-merges/1")
 	mtOriginal.AddMember("feature-1", "abc123")
 	mtOriginal.AddMember("feature-2", "def456")
 
@@ -17,7 +17,7 @@ func TestGenerateAndLoadCommitMessage(t *testing.T) {
 	}
 
 	// Load from commit message
-	mtLoaded, err := LoadFromCommitMessage(123, 456, message)
+	mtLoaded, err := LoadFromCommitMessage(message)
 	if err != nil {
 		t.Fatalf("LoadFromCommitMessage() error = %v", err)
 	}
@@ -44,7 +44,7 @@ func TestGenerateAndLoadCommitMessage(t *testing.T) {
 		t.Fatalf("GenerateCommitMessage() after RemoveMember error = %v", err)
 	}
 
-	mtLoaded, err = LoadFromCommitMessage(123, 456, message)
+	mtLoaded, err = LoadFromCommitMessage(message)
 	if err != nil {
 		t.Fatalf("LoadFromCommitMessage() after RemoveMember error = %v", err)
 	}

@@ -14,15 +14,7 @@ type MergeTrainOperator struct {
 }
 
 // LoadMergeTrainOperator loads or creates a merge train operator
-func LoadMergeTrainOperator(projectID int, issueIID int, repoPath string) (*MergeTrainOperator, error) {
-	// Initialize git repo
-	repo, err := git.New(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open repository: %w", err)
-	}
-
-	// Try to load merge train from branch
-	branchName := fmt.Sprintf("auto/light-merge-%d", issueIID)
+func LoadMergeTrainOperator(repo *git.Repo, branchName string, projectID, issueIID int) (*MergeTrainOperator, error) {
 	commit, err := repo.RevParse(branchName)
 	if err != nil {
 		// If branch doesn't exist, create a new merge train
@@ -44,7 +36,7 @@ func LoadMergeTrainOperator(projectID int, issueIID int, repoPath string) (*Merg
 	}
 
 	// Load merge train from commit message
-	mergeTrain, err := models.LoadFromCommitMessage(projectID, issueIID, message)
+	mergeTrain, err := models.LoadFromCommitMessage(message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load merge train from commit message: %w", err)
 	}

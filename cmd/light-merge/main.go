@@ -21,7 +21,7 @@ func main() {
 		slog.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
 	}
-	webhook, err := gitlab.NewWebhook(cfg.GitlabUrl, cfg.GitlabToken, cfg.RepoDirectory, cfg.ListenPort)
+	webhook, err := gitlab.NewWebhook(cfg.GitlabUrl, cfg.GitlabToken, cfg.RepoDirectory, cfg.BranchNamePrefix, cfg.ListenPort)
 	if err != nil {
 		slog.Error("Failed to create webhook", "error", err)
 		os.Exit(1)
