@@ -37,8 +37,8 @@ func (r *GitMergeFailResult) AsMarkdown() string {
 	messages := []string{}
 
 	// Add merge failure summary
-	messages = append(messages, "\n<details><summary>合并失败</summary>\n\n"+
-		fmt.Sprintf("**命令行**: \n```\n%s\n```\n\n", r.Cmdline)+
+	messages = append(messages, "\n<details><summary>merge failed</summary>\n\n"+
+		fmt.Sprintf("**commandline**: \n```\n%s\n```\n\n", r.Cmdline)+
 		fmt.Sprintf("**stdout**: \n```\n%s\n```\n\n", r.Stdout)+
 		fmt.Sprintf("**stderr**: \n```\n%s\n```\n", r.Stderr)+
 		"</details>")
@@ -47,12 +47,12 @@ func (r *GitMergeFailResult) AsMarkdown() string {
 	if len(r.ConflictBranches) > 0 {
 		newBranch := r.ConflictBranches[len(r.ConflictBranches)-1]
 		conflictBranches := strings.Join(r.ConflictBranches[:len(r.ConflictBranches)-1], ", ")
-		messages = append(messages, fmt.Sprintf("\n**和 `%s` conflicted branches**: `%s`\n", newBranch, conflictBranches))
+		messages = append(messages, fmt.Sprintf("\n**and `%s` conflicted branches**: `%s`\n", newBranch, conflictBranches))
 	}
 
 	// Add conflict details
 	if len(r.FailedFiles) > 0 {
-		messages = append(messages, "\n**冲突列表**: \n")
+		messages = append(messages, "\n**conflicts**: \n")
 		for _, file := range r.FailedFiles {
 			if len(file.ConflictDetail) < 20000 {
 				messages = append(messages, fmt.Sprintf("\n<details><summary>%s: %s</summary>\n\n```diff\n%s\n```\n</details>",

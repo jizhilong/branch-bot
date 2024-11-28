@@ -133,6 +133,9 @@ func (h *Webhook) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	switch e := event.(type) {
 	case *gitlab.IssueCommentEvent:
+		if e.User.Bot {
+			return
+		}
 		cmd, err := ParseCommand(e.ObjectAttributes.Note)
 		if err != nil {
 			slog.Error("Invalid command", "error", err)
@@ -195,27 +198,33 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 		ref, err := h.revParseRemote(event.ProjectID, c.BranchName)
 		if err != nil {
 			logger.Error("Failed to get remote ref", "error", err)
+			go h.reply(event, fmt.Sprintf("branch %s not found.", c.BranchName))
 			return
 		}
 		result, fail := operator.AddAndPush(ref)
 		if fail != nil {
 			logger.Error("Failed to add branch", "error", fail.AsMarkdown())
+			go h.reply(event, fail.AsMarkdown())
 			return
 		}
 		logger.Info("Successfully added branch", "result", result)
+		go h.awardEmoji(event, ":white_check_mark:")
 	case *RemoveCommand:
 		logger = logger.With("branch", c.BranchName)
 		ref, err := h.revParseRemote(event.ProjectID, c.BranchName)
 		if err != nil {
 			logger.Error("Failed to get remote ref", "error", err)
+			go h.reply(event, fmt.Sprintf("branch %s not found.", c.BranchName))
 			return
 		}
 		result, fail := operator.RemoveAndPush(ref.Name)
 		if fail != nil {
 			logger.Error("Failed to remove branch", "error", fail.AsMarkdown())
+			go h.reply(event, fail.AsMarkdown())
 			return
 		}
 		logger.Info("Successfully removed branch", "result", result)
+		go h.awardEmoji(event, ":white_check_mark:")
 	default:
 		logger.Error("Unknown command")
 	}
@@ -227,6 +236,24 @@ func (h *Webhook) getOperator(projectId, issueIID int, pathWithNameSpace, projec
 	} else {
 		branchName := fmt.Sprintf("%s%d", h.branchNamePrefix, issueIID)
 		return core.LoadMergeTrainOperator(repo, branchName, projectId, issueIID)
+	}
+}
+
+func (h *Webhook) reply(note *gitlab.IssueCommentEvent, message string) {
+	_, _, err := h.gl.Notes.CreateIssueNote(note.ProjectID, note.Issue.IID, &gitlab.CreateIssueNoteOptions{
+		Body: &message,
+	})
+	if err != nil {
+		slog.Error("Failed to reply to comment", "error", err)
+	}
+}
+
+func (h *Webhook) awardEmoji(note *gitlab.IssueCommentEvent, emoji string) {
+	_, _, err := h.gl.AwardEmoji.CreateIssuesAwardEmojiOnNote(note.ProjectID, note.Issue.IID,
+		note.ObjectAttributes.ID,
+		&gitlab.CreateAwardEmojiOptions{Name: emoji})
+	if err != nil {
+		slog.Error("Failed to award emoji", "error", err)
 	}
 }
 
