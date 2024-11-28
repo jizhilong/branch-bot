@@ -46,6 +46,16 @@ func (c *RemoveCommand) CommandName() string {
 	return "remove"
 }
 
+type StatusCommand string
+
+func (c StatusCommand) CommandName() string {
+	return "status"
+}
+
+func (c StatusCommand) String() string {
+	return "status"
+}
+
 // ParseCommand parses a command from issue comment
 func ParseCommand(comment string) (Command, error) {
 	// Expected format: !lm <command> [args...]
@@ -69,6 +79,8 @@ func ParseCommand(comment string) (Command, error) {
 		} else {
 			return &RemoveCommand{BranchName: parts[1]}, nil
 		}
+	case "status":
+		return StatusCommand("status"), nil
 	default:
 		return nil, fmt.Errorf("unknown command")
 	}
@@ -191,6 +203,7 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 		logger.Error("Failed to get operator", "error", err)
 		return
 	}
+	viewHelper := MergeTrainViewGlHelper{gl: h.gl, event: event}
 
 	switch c := cmd.(type) {
 	case *AddCommand:
@@ -208,6 +221,12 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 			return
 		}
 		logger.Info("Successfully added branch", "result", result)
+		err = operator.SyncMergeTrainView(viewHelper)
+		if err != nil {
+			logger.Error("Failed to sync merge train view", "error", err)
+			go h.reply(event, "failed to sync merge train view")
+			return
+		}
 		go h.awardEmoji(event, ":white_check_mark:")
 	case *RemoveCommand:
 		logger = logger.With("branch", c.BranchName)
@@ -224,7 +243,20 @@ func (h *Webhook) HandleCommand(cmd Command, event *gitlab.IssueCommentEvent) {
 			return
 		}
 		logger.Info("Successfully removed branch", "result", result)
+		err = operator.SyncMergeTrainView(viewHelper)
+		if err != nil {
+			logger.Error("Failed to sync merge train view", "error", err)
+			go h.reply(event, "failed to sync merge train view")
+			return
+		}
 		go h.awardEmoji(event, ":white_check_mark:")
+	case StatusCommand:
+		err := operator.SyncMergeTrainView(viewHelper)
+		if err != nil {
+			logger.Error("Failed to sync merge train view", "error", err)
+			go h.reply(event, "failed to sync merge train view")
+			return
+		}
 	default:
 		logger.Error("Unknown command")
 	}

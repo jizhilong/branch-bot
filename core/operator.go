@@ -13,6 +13,21 @@ type MergeTrainOperator struct {
 	mergeTrain *models.MergeTrain
 }
 
+// MergeTrainViewHelper provides helper functions for convert merge train to merge train views
+type MergeTrainViewHelper interface {
+	// URL generators
+	BranchURL(projectID int, branchName string) string
+	CommitURL(projectID int, commitSHA string) string
+
+	// Branch information
+	GetBranchLatestCommit(projectID int, branchName string) (*models.CommitView, error)
+	// MergeRequest information
+	GetMergeRequestInfo(projectID int, branchName string) (*models.MergeRequestView, error)
+
+	// Save merge train view to storage
+	Save(*models.MergeTrainView) error
+}
+
 // LoadMergeTrainOperator loads or creates a merge train operator
 func LoadMergeTrainOperator(repo *git.Repo, branchName string, projectID, issueIID int) (*MergeTrainOperator, error) {
 	commit, err := repo.RevParse(branchName)
@@ -238,4 +253,69 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.
 	}
 
 	return mergeResult, nil
+}
+
+// SyncMergeTrainView synchronizes the merge train view with the actual state
+func (o *MergeTrainOperator) SyncMergeTrainView(helper MergeTrainViewHelper) error {
+	view, err := o.getMergeTrainView(helper)
+	if err != nil {
+		return err
+	}
+
+	return helper.Save(view)
+}
+
+// getMergeTrainView returns a view of the merge train
+func (o *MergeTrainOperator) getMergeTrainView(helper MergeTrainViewHelper) (*models.MergeTrainView, error) {
+	mt, repo := o.mergeTrain, o.repo
+	view := &models.MergeTrainView{
+		Branch:  mt.BranchName,
+		URL:     helper.BranchURL(mt.ProjectID, mt.BranchName),
+		Members: make([]models.MemberView, 0, len(mt.Members)),
+	}
+	if len(mt.Members) == 0 {
+		return view, nil
+	}
+
+	// Get light-merge branch latest commit
+	trainCommit, err := repo.RevParse(mt.BranchName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get light-merge branch commit: %w", err)
+	}
+	view.Commit = &models.CommitView{
+		SHA: trainCommit,
+		URL: helper.CommitURL(mt.ProjectID, trainCommit),
+	}
+
+	// Convert members
+	for _, member := range mt.Members {
+		memberView := models.MemberView{
+			Branch:    member.Branch,
+			BranchURL: helper.BranchURL(mt.ProjectID, member.Branch),
+		}
+
+		// Set merged commit info
+		if member.MergedCommit != "" {
+			memberView.MergedCommit = &models.CommitView{
+				SHA: member.MergedCommit,
+				URL: helper.CommitURL(mt.ProjectID, member.MergedCommit),
+			}
+		}
+
+		// Get latest commit
+		latestCommit, err := helper.GetBranchLatestCommit(mt.ProjectID, member.Branch)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get latest commit for branch %s: %w", member.Branch, err)
+		}
+		memberView.LatestCommit = latestCommit
+
+		// Get merge request info if exists
+		if mr, err := helper.GetMergeRequestInfo(mt.ProjectID, member.Branch); err == nil {
+			memberView.MergeRequest = mr
+		}
+
+		view.Members = append(view.Members, memberView)
+	}
+
+	return view, nil
 }
