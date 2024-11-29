@@ -1,6 +1,8 @@
 package git
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -106,4 +108,40 @@ func TestGetCommitMessage(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestSyncRepo(t *testing.T) {
+	projectPath := "test-repo"
+	repoDir, err := os.MkdirTemp("", "light-merge-test-*")
+	assert.NoError(t, err)
+	defer os.RemoveAll(repoDir)
+	repoPath := fmt.Sprintf("%s/%s", repoDir, projectPath)
+	remoteUrl := "https://github.com/jizhilong/pywireguard.git"
+
+	t.Run("syncRepo success", func(t *testing.T) {
+		// Test syncRepo function
+		repo, err := SyncRepo(repoPath, remoteUrl)
+		assert.NoError(t, err)
+		assert.NotNil(t, repo)
+
+		// Verify the repository was cloned correctly
+		_, err = os.Stat(repoPath)
+		assert.NoError(t, err)
+
+		// Verify the .git directory exists
+		gitDirPath := fmt.Sprintf("%s/.git", repoPath)
+		_, err = os.Stat(gitDirPath)
+		assert.NoError(t, err)
+
+		// Test syncRepo function
+		repo, err = SyncRepo(repoPath, remoteUrl)
+		assert.NoError(t, err)
+		assert.NotNil(t, repo)
+	})
+	t.Run("syncRepo with invalid project URL", func(t *testing.T) {
+		// Test syncRepo function
+		_, err := SyncRepo("invalid-repo", "http://localhost/invalid-repo.git")
+		assert.Error(t, err)
+		t.Log(err)
+	})
 }

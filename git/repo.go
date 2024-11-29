@@ -15,6 +15,40 @@ type Repo struct {
 	path string // absolute path to the repository
 }
 
+// SyncRepo ensures the repository exists and is up-to-date with the remote
+func SyncRepo(repoPath, remoteUrl string) (*Repo, error) {
+	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(repoPath, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create repo directory: %w", err)
+		}
+	}
+	gitDirPath := fmt.Sprintf("%s/.git", repoPath)
+	var repo *Repo
+	if _, err := os.Stat(gitDirPath); os.IsNotExist(err) {
+		// clone from remote
+		repo, err = Clone(remoteUrl, repoPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to clone repository: %w", err)
+		}
+		if err = repo.Config("user.name", "light-merge"); err != nil {
+			return nil, fmt.Errorf("failed to set user name: %w", err)
+		}
+		if err = repo.Config("user.email", "operator@light-merge.localhost"); err != nil {
+			return nil, fmt.Errorf("failed to set user email: %w", err)
+		}
+	} else {
+		repo, err = New(repoPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open repository: %w", err)
+		}
+		err = repo.RefreshRemote()
+		if err != nil {
+			return nil, fmt.Errorf("failed to refresh remote: %w", err)
+		}
+	}
+	return repo, nil
+}
+
 func Clone(url, path string) (*Repo, error) {
 	cmd := exec.Command("git", "clone", url, path)
 	if output, err := cmd.CombinedOutput(); err != nil {
