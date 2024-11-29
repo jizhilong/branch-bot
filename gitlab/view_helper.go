@@ -10,6 +10,7 @@ import (
 type MergeTrainViewGlHelper struct {
 	gl    *gitlab.Client
 	event *gitlab.IssueCommentEvent
+	fail  *models.GitMergeFailResult
 }
 
 func (m MergeTrainViewGlHelper) BranchURL(projectID int, branchName string) string {
@@ -72,7 +73,17 @@ func (m MergeTrainViewGlHelper) GetMergeRequestInfo(projectID int, branchName st
 }
 
 func (m MergeTrainViewGlHelper) Save(view *models.MergeTrainView) error {
-	description := fmt.Sprintf("%s\n%s", view.RenderMermaid(), view.RenderTable())
+	lastCommandResult := "and all goes well"
+	if m.fail != nil {
+		lastCommandResult = fmt.Sprintf("but failed to process!\n %s", m.fail.AsMarkdown())
+	}
+	lastCommand := fmt.Sprintf("## Last Command\n> %s\n\nfrom @%s at _%s_ %s",
+		m.event.ObjectAttributes.Note, m.event.User.Username, m.event.ObjectAttributes.CreatedAt,
+		lastCommandResult)
+	status := fmt.Sprintf("## Current Status\n\n%s\n%s",
+		view.RenderMermaid(),
+		view.RenderTable())
+	description := fmt.Sprintf("%s\n\n%s", status, lastCommand)
 	_, _, err := m.gl.Issues.UpdateIssue(m.event.ProjectID, m.event.Issue.IID, &gitlab.UpdateIssueOptions{
 		Description: &description,
 	})

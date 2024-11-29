@@ -118,7 +118,7 @@ func (h *Webhook) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			slog.Error("Invalid command", "error", err)
 			return
 		}
-		if cmd != nil {
+		if cmd == nil {
 			return
 		}
 		logger := slog.With(
@@ -129,6 +129,7 @@ func (h *Webhook) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		operator, err := h.getOperator(e.ProjectID, e.Issue.IID, e.Project.PathWithNamespace, e.Project.GitHTTPURL)
 		if err != nil {
 			logger.Error("Failed to get operator", "error", err)
+			h.reply(e, fmt.Sprintf("failed to initialize repo: %s", err))
 			return
 		}
 		logger.Info("Handling command", "command", cmd.String())

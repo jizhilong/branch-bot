@@ -30,15 +30,18 @@ func (c *RemoveCommand) Process(h *Webhook, event *gitlab.IssueCommentEvent, log
 	result, fail := operator.RemoveAndPush(ref.Name)
 	if fail != nil {
 		logger.Error("Failed to remove branch", "error", fail.AsMarkdown())
-		go h.reply(event, fail.AsMarkdown())
-		return
+	} else {
+		logger.Info("Successfully removed branch", "result", result)
 	}
-	logger.Info("Successfully removed branch", "result", result)
-	err = operator.SyncMergeTrainView(&MergeTrainViewGlHelper{gl: h.gl, event: event})
+	emoji := ":white_check_mark:"
+	if fail != nil {
+		emoji = ":x:"
+	}
+	go h.awardEmoji(event, emoji)
+	err = operator.SyncMergeTrainView(&MergeTrainViewGlHelper{gl: h.gl, event: event, fail: fail})
 	if err != nil {
 		logger.Error("Failed to sync merge train view", "error", err)
 		go h.reply(event, "failed to sync merge train view")
 		return
 	}
-	go h.awardEmoji(event, ":white_check_mark:")
 }

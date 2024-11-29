@@ -23,4 +23,5 @@ func (c StatusCommand) Process(h *Webhook, event *gitlab.IssueCommentEvent, logg
 		go h.reply(event, "failed to sync merge train view")
 		return
 	}
+	go h.awardEmoji(event, ":white_check_mark:")
 }

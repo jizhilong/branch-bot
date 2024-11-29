@@ -37,7 +37,7 @@ func (r *GitMergeFailResult) AsMarkdown() string {
 	messages := []string{}
 
 	// Add merge failure summary
-	messages = append(messages, "\n<details><summary>merge failed</summary>\n\n"+
+	messages = append(messages, "\n<details><summary>error summary</summary>\n\n"+
 		fmt.Sprintf("**commandline**: \n```\n%s\n```\n\n", r.Cmdline)+
 		fmt.Sprintf("**stdout**: \n```\n%s\n```\n\n", r.Stdout)+
 		fmt.Sprintf("**stderr**: \n```\n%s\n```\n", r.Stderr)+
