@@ -32,6 +32,10 @@ type GitMergeFailResult struct {
 	ConflictBranches []string            // branches that conflict with the new branch
 }
 
+func (r *GitMergeFailResult) Error() string {
+	return fmt.Sprintf("%s failed: %s %s", r.Cmdline, r.Status, r.Stderr)
+}
+
 // AsMarkdown formats the merge result as markdown
 func (r *GitMergeFailResult) AsMarkdown() string {
 	messages := []string{}

@@ -19,6 +19,14 @@ func (h *Webhook) reply(note *gitlab.IssueCommentEvent, message string) {
 	}
 }
 
+func (h *Webhook) awardEmojiAgainstError(note *gitlab.IssueCommentEvent, err error) {
+	if err == nil {
+		go h.awardEmoji(note, ":white_check_mark:")
+	} else {
+		go h.awardEmoji(note, ":x:")
+	}
+}
+
 func (h *Webhook) awardEmoji(note *gitlab.IssueCommentEvent, emoji string) {
 	_, _, err := h.gl.AwardEmoji.CreateIssuesAwardEmojiOnNote(note.ProjectID, note.Issue.IID,
 		note.ObjectAttributes.ID,
