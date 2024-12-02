@@ -43,7 +43,7 @@ type CommitView struct {
 // RenderMermaid generates a mermaid graph representation
 func (v *MergeTrainView) RenderMermaid() string {
 	if len(v.Members) == 0 {
-		return ""
+		return "this light merge train is empty."
 	}
 
 	// Start mermaid graph

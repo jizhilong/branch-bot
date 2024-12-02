@@ -63,7 +63,7 @@ func LoadMergeTrainOperator(repo *git.Repo, branchName string, projectID, issueI
 }
 
 // AddAndPush adds a branch to the merge train and pushes the changes
-func (o *MergeTrainOperator) AddAndPush(ref *models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
+func (o *MergeTrainOperator) AddAndPush(ref *models.GitRef) (*models.GitRef, error) {
 	// Add the branch to the merge train
 	mergeResult, fail := o.Add(ref)
 	if fail != nil {
@@ -73,18 +73,14 @@ func (o *MergeTrainOperator) AddAndPush(ref *models.GitRef) (*models.GitRef, *mo
 	// Push the changes
 	err := o.repo.PushRemote("origin", o.mergeTrain.BranchName, mergeResult.Commit)
 	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git push origin %s", o.mergeTrain.BranchName),
-			Stderr:  err.Error(),
-			Status:  "failed to push",
-		}
+		return nil, err
 	}
 
 	return mergeResult, nil
 }
 
 // Add adds or updates a branch in the merge train
-func (o *MergeTrainOperator) Add(ref *models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
+func (o *MergeTrainOperator) Add(ref *models.GitRef) (*models.GitRef, error) {
 	// Create a copy of current members
 	currentMembers := make([]models.MergeTrainItem, len(o.mergeTrain.Members))
 	copy(currentMembers, o.mergeTrain.Members)
@@ -117,14 +113,7 @@ func (o *MergeTrainOperator) Add(ref *models.GitRef) (*models.GitRef, *models.Gi
 	refs = append(refs, ref)
 
 	// Generate commit message before merge
-	message, err := o.mergeTrain.GenerateCommitMessageWithNewMemberSet(newMembers)
-	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: "generate commit message",
-			Stderr:  err.Error(),
-			Status:  "internal error",
-		}
-	}
+	message := o.mergeTrain.GenerateCommitMessageWithNewMemberSet(newMembers)
 
 	// Try to merge all branches with the generated message
 	mergeResult, mergeErr := o.repo.Merge(message, refs[0], refs[1:]...)
@@ -136,20 +125,16 @@ func (o *MergeTrainOperator) Add(ref *models.GitRef) (*models.GitRef, *models.Gi
 	o.mergeTrain.Members = newMembers
 
 	// Create or update the light-merge branch
-	err = o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
+	err := o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
 	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git branch -f %s %s", o.mergeTrain.BranchName, mergeResult.Commit),
-			Stderr:  err.Error(),
-			Status:  "failed to update branch",
-		}
+		return nil, err
 	}
 
 	return mergeResult, nil
 }
 
 // RemoveAndPush removes a branch from the merge train and pushes the changes
-func (o *MergeTrainOperator) RemoveAndPush(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
+func (o *MergeTrainOperator) RemoveAndPush(branchName string) (*models.GitRef, error) {
 	// Remove the branch from the merge train
 	mergeResult, fail := o.Remove(branchName)
 	if fail != nil {
@@ -167,18 +152,14 @@ func (o *MergeTrainOperator) RemoveAndPush(branchName string) (*models.GitRef, *
 	// Push the changes
 	err := o.repo.PushRemote("origin", o.mergeTrain.BranchName, pushCommit)
 	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git push origin %s", o.mergeTrain.BranchName),
-			Stderr:  err.Error(),
-			Status:  "failed to push",
-		}
+		return nil, err
 	}
 
 	return mergeResult, nil
 }
 
 // Remove removes a branch from the merge train and updates the light-merge branch
-func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.GitMergeFailResult) {
+func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, error) {
 	// Check if branch exists in merge train
 	var branchIndex = -1
 	for i, member := range o.mergeTrain.Members {
@@ -188,11 +169,7 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.
 		}
 	}
 	if branchIndex == -1 {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("check branch %s", branchName),
-			Stderr:  "branch not found in merge train",
-			Status:  "not found",
-		}
+		return nil, fmt.Errorf("branch %s is not a member of merge train", branchName)
 	}
 
 	// Create a copy of current members without the branch to remove
@@ -204,11 +181,7 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.
 	if len(currentMembers) == 0 {
 		err := o.repo.EnsureBranch(o.mergeTrain.BranchName, "")
 		if err != nil {
-			return nil, &models.GitMergeFailResult{
-				Cmdline: fmt.Sprintf("git branch -D %s", o.mergeTrain.BranchName),
-				Stderr:  err.Error(),
-				Status:  "internal error",
-			}
+			return nil, err
 		}
 		o.mergeTrain.Members = currentMembers
 		return nil, nil
@@ -224,14 +197,7 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.
 	}
 
 	// Generate commit message
-	message, err := o.mergeTrain.GenerateCommitMessageWithNewMemberSet(currentMembers)
-	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: "generate commit message",
-			Stderr:  err.Error(),
-			Status:  "internal error",
-		}
-	}
+	message := o.mergeTrain.GenerateCommitMessageWithNewMemberSet(currentMembers)
 
 	// Try to merge remaining branches
 	mergeResult, mergeErr := o.repo.Merge(message, refs[0], refs[1:]...)
@@ -243,13 +209,9 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, *models.
 	o.mergeTrain.Members = currentMembers
 
 	// Update the light-merge branch
-	err = o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
+	err := o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
 	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git branch -f %s %s", o.mergeTrain.BranchName, mergeResult.Commit),
-			Stderr:  err.Error(),
-			Status:  "failed to update branch",
-		}
+		return nil, err
 	}
 
 	return mergeResult, nil

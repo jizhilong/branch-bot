@@ -55,17 +55,17 @@ func (mt *MergeTrain) RemoveMember(branch string) {
 }
 
 // GenerateCommitMessage creates a commit message for the light-merge branch
-func (mt *MergeTrain) GenerateCommitMessage() (string, error) {
+func (mt *MergeTrain) GenerateCommitMessage() string {
 	data, err := json.MarshalIndent(mt, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize MergeTrain: %w", err)
+		panic(err)
 	}
 
-	return fmt.Sprintf("Light-Merge State\n\n%s", string(data)), nil
+	return fmt.Sprintf("Light-Merge State\n\n%s", string(data))
 }
 
 // GenerateCommitMessageWithNewMemberSet creates a commit message for the light-merge branch with new members, but don't add them to the merge train
-func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTrainItem) (string, error) {
+func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTrainItem) string {
 	originalMembers := mt.Members
 	defer func() { mt.Members = originalMembers }()
 	mt.Members = newMembers

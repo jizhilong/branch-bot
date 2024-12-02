@@ -29,12 +29,12 @@ func (c *RemoveCommand) Process(h *Webhook, event *gitlab.IssueCommentEvent, log
 	}
 	result, fail := operator.RemoveAndPush(ref.Name)
 	if fail != nil {
-		logger.Error("Failed to remove branch", "error", fail.AsMarkdown())
+		logger.Error("Failed to remove branch", "error", fail)
 	} else {
 		logger.Info("Successfully removed branch", "result", result)
 	}
 	h.awardEmojiAgainstError(event, fail)
-	err = operator.SyncMergeTrainView(&MergeTrainViewGlHelper{gl: h.gl, event: event, fail: fail})
+	err = operator.SyncMergeTrainView(&MergeTrainViewGlHelper{gl: h.gl, event: event, err: fail})
 	if err != nil {
 		logger.Error("Failed to sync merge train view", "error", err)
 		go h.reply(event, "failed to sync merge train view")

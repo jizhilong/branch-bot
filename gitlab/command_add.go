@@ -31,10 +31,10 @@ func (c *AddCommand) Process(h *Webhook, event *gitlab.IssueCommentEvent, logger
 	if fail == nil {
 		logger.Info("Successfully added branch", "result", result)
 	} else {
-		logger.Error("Failed to add branch", "error", fail.AsMarkdown())
+		logger.Error("Failed to add branch", "error", fail)
 	}
 	h.awardEmojiAgainstError(event, fail)
-	err = operator.SyncMergeTrainView(&MergeTrainViewGlHelper{gl: h.gl, event: event, fail: fail})
+	err = operator.SyncMergeTrainView(&MergeTrainViewGlHelper{gl: h.gl, event: event, err: fail})
 	if err != nil {
 		logger.Error("Failed to sync merge train view", "error", err)
 		return

@@ -10,7 +10,7 @@ import (
 type MergeTrainViewGlHelper struct {
 	gl    *gitlab.Client
 	event *gitlab.IssueCommentEvent
-	fail  *models.GitMergeFailResult
+	err   error
 }
 
 func (m MergeTrainViewGlHelper) BranchURL(projectID int, branchName string) string {
@@ -72,12 +72,27 @@ func (m MergeTrainViewGlHelper) GetMergeRequestInfo(projectID int, branchName st
 	}
 }
 
+func errorToMarkdown(err error) string {
+	if err == nil {
+		return ""
+	}
+	if mdError, ok := err.(*models.GitMergeFailResult); ok {
+		return mdError.AsMarkdown()
+	}
+	errorString := err.Error()
+	if len(errorString) < 100 {
+		return fmt.Sprintf("**%s**", errorString)
+	} else {
+		return fmt.Sprintf("\n<details><summary>error</summay>\n```\n%s\n```</details>", errorString)
+	}
+}
+
 func (m MergeTrainViewGlHelper) Save(view *models.MergeTrainView) error {
 	lastCommandResult := "and all goes well"
-	if m.fail != nil {
-		lastCommandResult = fmt.Sprintf("but failed to process!\n %s", m.fail.AsMarkdown())
+	if m.err != nil {
+		lastCommandResult = fmt.Sprintf("but failed to process: %s", errorToMarkdown(m.err))
 	}
-	lastCommand := fmt.Sprintf("## Last Command\n> %s\n\nfrom @%s at _%s_ %s",
+	lastCommand := fmt.Sprintf("## Last Command\n> %s\n\nfrom @%s at `%s` %s",
 		m.event.ObjectAttributes.Note, m.event.User.Username, m.event.ObjectAttributes.CreatedAt,
 		lastCommandResult)
 	status := fmt.Sprintf("## Current Status\n\n%s\n%s",
