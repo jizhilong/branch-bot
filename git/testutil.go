@@ -23,14 +23,11 @@ func NewTestRepo(t *testing.T) *TestRepo {
 	r := &TestRepo{Repo: Repo{path: tmpDir}, t: t}
 
 	// Initialize git repo
-	cmd := r.execCommand("git", "init")
-	require.NoError(t, cmd.Run())
+	r.mustExec("git", "init")
 
 	// Configure git
-	cmd = r.execCommand("git", "config", "user.name", "test")
-	require.NoError(t, cmd.Run())
-	cmd = r.execCommand("git", "config", "user.email", "test@example.com")
-	require.NoError(t, cmd.Run())
+	r.mustExec("git", "config", "user.name", "test")
+	r.mustExec("git", "config", "user.email", "test@example.com")
 
 	// Create initial commit
 	f, err := os.Create(filepath.Join(tmpDir, "README.md"))
@@ -39,15 +36,12 @@ func NewTestRepo(t *testing.T) *TestRepo {
 	require.NoError(t, err)
 	f.Close()
 
-	cmd = r.execCommand("git", "add", "README.md")
-	require.NoError(t, cmd.Run())
+	r.mustExec("git", "add", "README.md")
 
-	cmd = r.execCommand("git", "commit", "-m", "Initial commit")
-	require.NoError(t, cmd.Run())
+	r.mustExec("git", "commit", "-m", "Initial commit")
 
 	// make sure the initial branch name is main
-	cmd = r.execCommand("git", "branch", "-m", "main")
-	require.NoError(t, cmd.Run())
+	r.mustExec("git", "branch", "-m", "main")
 
 	t.Cleanup(func() {
 		os.RemoveAll(tmpDir)
@@ -59,8 +53,7 @@ func NewTestRepo(t *testing.T) *TestRepo {
 // CreateBranch creates a new branch with a test file
 func (r *TestRepo) CreateBranch(base *models.GitRef, name, file, content string) *models.GitRef {
 	// Create a new branch
-	cmd := r.execCommand("git", "checkout", base.Commit, "-b", name)
-	require.NoError(r.t, cmd.Run())
+	r.mustExec("git", "checkout", base.Commit, "-b", name)
 
 	// Create a file
 	f, err := os.Create(filepath.Join(r.path, file))
@@ -70,11 +63,9 @@ func (r *TestRepo) CreateBranch(base *models.GitRef, name, file, content string)
 	f.Close()
 
 	// Add and commit
-	cmd = r.execCommand("git", "add", file)
-	require.NoError(r.t, cmd.Run())
+	r.mustExec("git", "add", file)
 
-	cmd = r.execCommand("git", "commit", "-m", "Add "+file)
-	require.NoError(r.t, cmd.Run())
+	r.mustExec("git", "commit", "-m", "Add "+file)
 
 	// Get commit hash
 	hash, err := r.RevParse("HEAD")
@@ -87,8 +78,7 @@ func (r *TestRepo) CreateBranch(base *models.GitRef, name, file, content string)
 }
 
 func (r *TestRepo) UpdateBranch(name, file, content string) *models.GitRef {
-	cmd := r.execCommand("git", "checkout", name)
-	require.NoError(r.t, cmd.Run())
+	r.mustExec("git", "checkout", name)
 
 	// Create a file
 	f, err := os.Create(filepath.Join(r.path, file))
@@ -98,11 +88,9 @@ func (r *TestRepo) UpdateBranch(name, file, content string) *models.GitRef {
 	f.Close()
 
 	// Add and commit
-	cmd = r.execCommand("git", "add", file)
-	require.NoError(r.t, cmd.Run())
+	r.mustExec("git", "add", file)
 
-	cmd = r.execCommand("git", "commit", "-m", "Update"+file)
-	require.NoError(r.t, cmd.Run())
+	r.mustExec("git", "commit", "-m", "Update"+file)
 
 	// Get commit hash
 	commit, err := r.RevParse("HEAD")
@@ -110,5 +98,12 @@ func (r *TestRepo) UpdateBranch(name, file, content string) *models.GitRef {
 	return &models.GitRef{
 		Name:   name,
 		Commit: commit,
+	}
+}
+
+func (r *TestRepo) mustExec(name string, args ...string) {
+	_, err := r.execCommand(name, args...)
+	if err != nil {
+		r.t.Fatal(err)
 	}
 }

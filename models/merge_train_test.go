@@ -11,10 +11,7 @@ func TestGenerateAndLoadCommitMessage(t *testing.T) {
 	mtOriginal.AddMember("feature-2", "def456")
 
 	// Generate commit message
-	message, err := mtOriginal.GenerateCommitMessage()
-	if err != nil {
-		t.Fatalf("GenerateCommitMessage() error = %v", err)
-	}
+	message := mtOriginal.GenerateCommitMessage()
 
 	// Load from commit message
 	mtLoaded, err := LoadFromCommitMessage(message)
@@ -39,10 +36,7 @@ func TestGenerateAndLoadCommitMessage(t *testing.T) {
 
 	// Test after removing a member
 	mtOriginal.RemoveMember("feature-1")
-	message, err = mtOriginal.GenerateCommitMessage()
-	if err != nil {
-		t.Fatalf("GenerateCommitMessage() after RemoveMember error = %v", err)
-	}
+	message = mtOriginal.GenerateCommitMessage()
 
 	mtLoaded, err = LoadFromCommitMessage(message)
 	if err != nil {

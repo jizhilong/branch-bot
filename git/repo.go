@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -74,20 +75,40 @@ func New(path string) (*Repo, error) {
 	return &Repo{path: absPath}, nil
 }
 
-// execCommand creates and executes a git command in the repo directory
-func (r *Repo) execCommand(name string, args ...string) *exec.Cmd {
+// execCommand executes a git command in the repository, returning the detail of result or error
+func (r *Repo) execCommand(name string, args ...string) (*models.CommandExecResult, *models.CommandExecFail) {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = r.path
-	return cmd
+	res := &models.CommandExecResult{
+		Cmdline: fmt.Sprintf("%s %s", name, strings.Join(args, " ")),
+	}
+	stdout, err := cmd.Output()
+	res.Stdout = string(stdout)
+	if err == nil {
+		return res, nil
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		res.Stderr = string(exitErr.Stderr)
+		res.Status = exitErr.Error()
+	}
+	return nil, (*models.CommandExecFail)(res)
+}
+
+// execCommandError executes a git command in the repository, returning error if failed
+func (r *Repo) execCommandError(name string, args ...string) error {
+	if _, err := r.execCommand(name, args...); err != nil {
+		return err
+	}
+	return nil
 }
 
 // RevParse returns the commit hash for the given revision
 func (r *Repo) RevParse(rev string) (string, error) {
-	output, err := r.execCommand("git", "rev-parse", rev).Output()
+	res, err := r.execCommand("git", "rev-parse", rev)
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse failed: %w", err)
+		return "", err
 	}
-	return strings.TrimSpace(string(output)), nil
+	return strings.TrimSpace(res.Stdout), nil
 }
 
 // Merge attempts to merge the given commits
@@ -99,7 +120,7 @@ func (r *Repo) RevParse(rev string) (string, error) {
 //   - First merges all commits except the last one
 //   - Then tries to merge the last commit
 //   - If second phase fails, checks which branches conflict with the last one
-func (r *Repo) Merge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
+func (r *Repo) Merge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, error) {
 	// Try direct merge first
 	if ref, fail := r.doMerge(message, base, commits...); ref != nil {
 		return ref, nil
@@ -119,49 +140,39 @@ func (r *Repo) Merge(message string, base *models.GitRef, commits ...*models.Git
 		return finalRef, nil
 	}
 
-	// Check which branches conflict with the last one
-	lastCommit := commits[len(commits)-1]
-	for _, commit := range commits[:len(commits)-1] {
-		if r.checkConflict(lastCommit, commit) {
-			finalFail.ConflictBranches = append(finalFail.ConflictBranches, commit.Name)
+	var mergeFail *models.GitMergeFailResult
+	if errors.As(finalFail, &mergeFail) {
+		// Check which branches conflict with the last one
+		lastCommit := commits[len(commits)-1]
+		for _, commit := range commits[:len(commits)-1] {
+			if r.checkConflict(lastCommit, commit) {
+				mergeFail.ConflictBranches = append(mergeFail.ConflictBranches, commit.Name)
+			}
 		}
+		mergeFail.ConflictBranches = append(mergeFail.ConflictBranches, lastCommit.Name)
+		return nil, mergeFail
 	}
-	finalFail.ConflictBranches = append(finalFail.ConflictBranches, lastCommit.Name)
 	return nil, finalFail
 }
 
 // doMerge performs the actual merge operation
-func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, *models.GitMergeFailResult) {
+func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.GitRef) (*models.GitRef, error) {
 	// Reset to base commit
-	if output, err := r.execCommand("git", "checkout", base.Commit).CombinedOutput(); err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: fmt.Sprintf("git checkout %s", base.Commit),
-			Stdout:  string(output),
-			Stderr:  err.Error(),
-			Status:  "reset failed",
-		}
+	if _, err := r.execCommand("git", "checkout", base.Commit); err != nil {
+		return nil, err
 	}
 	defer func() {
 		// No matter merge success or not, keep the working directory clean
-		_ = r.execCommand("git", "reset", "--hard", "HEAD").Run()
+		_, _ = r.execCommand("git", "reset", "--hard", "HEAD")
 	}()
 	// Early return for empty commits
 	if len(commits) == 0 {
-		if output, err := r.execCommand("git", "commit", "--allow-empty", "-m", message).CombinedOutput(); err != nil {
-			return nil, &models.GitMergeFailResult{
-				Cmdline: fmt.Sprintf("git commit --allow-empty -m %q", message),
-				Stdout:  string(output),
-				Stderr:  err.Error(),
-				Status:  "commit failed",
-			}
+		if _, err := r.execCommand("git", "commit", "--allow-empty", "-m", message); err != nil {
+			return nil, err
 		}
 		hash, err := r.RevParse("HEAD")
 		if err != nil {
-			return nil, &models.GitMergeFailResult{
-				Cmdline: "git rev-parse HEAD",
-				Stderr:  err.Error(),
-				Status:  "rev-parse failed",
-			}
+			return nil, err
 		}
 		return &models.GitRef{
 			Name:   "HEAD",
@@ -174,15 +185,12 @@ func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.G
 	for _, c := range commits {
 		args = append(args, c.Commit)
 	}
-	cmdline := fmt.Sprintf("git %s", strings.Join(args, " "))
-
 	// Execute merge
-	cmd := r.execCommand("git", args...)
-	output, err := cmd.CombinedOutput()
+	_, err := r.execCommand("git", args...)
 	if err != nil {
 		// Get conflict details
 		conflicts := []models.FileMergeConflict{}
-		for _, line := range strings.Split(string(output), "\n") {
+		for _, line := range strings.Split(err.Stdout, "\n") {
 			if strings.HasPrefix(line, "CONFLICT ") {
 				// Parse conflict details using git diff
 				parts := strings.SplitN(line, ": ", 2)
@@ -193,33 +201,29 @@ func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.G
 				path := strings.TrimSpace(strings.Split(parts[1], " in ")[1])
 
 				// Get diff for the conflicted file
-				diff, _ := r.execCommand("git", "diff", path).Output()
+				diffRes, err := r.execCommand("git", "diff", path)
+				if err != nil {
+					return nil, err
+				}
 
 				conflicts = append(conflicts, models.FileMergeConflict{
 					Path:           path,
 					ConflictType:   conflictType,
-					ConflictDetail: string(diff),
+					ConflictDetail: diffRes.Stdout,
 				})
 			}
 		}
 
 		return nil, &models.GitMergeFailResult{
-			Cmdline:     cmdline,
-			Stdout:      string(output),
-			Stderr:      err.Error(),
-			Status:      "merge failed",
-			FailedFiles: conflicts,
+			CommandExecFail: *err,
+			FailedFiles:     conflicts,
 		}
 	}
 
 	// Get resulting commit
-	hash, err := r.RevParse("HEAD")
-	if err != nil {
-		return nil, &models.GitMergeFailResult{
-			Cmdline: cmdline,
-			Stderr:  err.Error(),
-			Status:  "rev-parse failed",
-		}
+	hash, parseErr := r.RevParse("HEAD")
+	if parseErr != nil {
+		return nil, parseErr
 	}
 
 	return &models.GitRef{
@@ -231,30 +235,29 @@ func (r *Repo) doMerge(message string, base *models.GitRef, commits ...*models.G
 // checkConflict checks if two branches have conflicts
 func (r *Repo) checkConflict(base, other *models.GitRef) bool {
 	// Reset to base commit
-	if err := r.execCommand("git", "reset", "--hard", base.Commit).Run(); err != nil {
+	if _, err := r.execCommand("git", "reset", "--hard", base.Commit); err != nil {
 		return false
 	}
 
 	// Try merge without committing
-	if err := r.execCommand("git", "merge", "--no-ff", "--no-commit", other.Commit).Run(); err != nil {
+	if _, err := r.execCommand("git", "merge", "--no-ff", "--no-commit", other.Commit); err != nil {
 		// Clean up
-		r.execCommand("git", "merge", "--abort").Run() // Ignore cleanup errors
+		_, _ = r.execCommand("git", "merge", "--abort") // Ignore cleanup errors
 		return true
 	}
 
 	// Clean up
-	r.execCommand("git", "merge", "--abort").Run() // Ignore cleanup errors
+	_, _ = r.execCommand("git", "merge", "--abort") // Ignore cleanup errors
 	return false
 }
 
 // GetCommitMessage returns the commit message for the given commit
 func (r *Repo) GetCommitMessage(commit string) (string, error) {
-	cmd := r.execCommand("git", "log", "-1", "--pretty=format:%B", commit)
-	output, err := cmd.Output()
+	res, err := r.execCommand("git", "log", "-1", "--pretty=format:%B", commit)
 	if err != nil {
-		return "", fmt.Errorf("failed to get commit message: %w", err)
+		return "", err
 	}
-	return string(output), nil
+	return res.Stdout, nil
 }
 
 // EnsureBranch ensures a branch exists and points to the specified commit.
@@ -262,43 +265,26 @@ func (r *Repo) GetCommitMessage(commit string) (string, error) {
 // If the branch doesn't exist, it will be created.
 // If the branch exists but points to a different commit, it will be updated.
 func (r *Repo) EnsureBranch(name string, commit string) error {
-	var cmd *exec.Cmd
 	if commit == "" {
-		cmd = r.execCommand("git", "branch", "-D", name)
+		return r.execCommandError("git", "branch", "-D", name)
 	} else {
-		cmd = r.execCommand("git", "branch", "-f", name, commit)
+		return r.execCommandError("git", "branch", "-f", name, commit)
 	}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to ensure branch %s at %s: %s: %w", name, commit, output, err)
-	}
-	return nil
 }
 
 // RefreshRemote fetches the latest changes from the remote repository
 func (r *Repo) RefreshRemote() error {
-	cmd := r.execCommand("git", "fetch", "--all")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to fetch remote: %s: %w", output, err)
-	}
-	return nil
+	return r.execCommandError("git", "fetch", "--all")
 }
 
 // PushRemote update a remote branch to a specified commit
 func (r *Repo) PushRemote(remote, branch, commit string) error {
-	cmd := r.execCommand("git", "push", "-f", remote, fmt.Sprintf("%s:refs/heads/%s", commit, branch))
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to push to remote %s: %s: %w", remote, output, err)
-	}
-	return nil
+	return r.execCommandError("git", "push", "-f", remote, fmt.Sprintf("%s:refs/heads/%s", commit, branch))
 }
 
 // Config set a git config in the repository
 func (r *Repo) Config(key, value string) error {
-	cmd := r.execCommand("git", "config", "--local", key, value)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set git config %s: %s: %w", key, output, err)
-	}
-	return nil
+	return r.execCommandError("git", "config", "--local", key, value)
 }
 
 // Path returns the absolute path to the repository

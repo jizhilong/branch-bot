@@ -39,8 +39,10 @@ func TestMerge(t *testing.T) {
 		result, fail := repo.Merge("Merge conflict1, conflict2 into main", base, ref1, ref2)
 		assert.Nil(t, result)
 		assert.NotNil(t, fail)
-		assert.NotEmpty(t, fail.FailedFiles)
-		assert.Equal(t, "conflict.txt", fail.FailedFiles[0].Path)
+		if mergeFail, ok := fail.(*models.GitMergeFailResult); assert.True(t, ok) {
+			assert.NotEmpty(t, mergeFail.FailedFiles)
+			assert.Equal(t, "conflict.txt", mergeFail.FailedFiles[0].Path)
+		}
 	})
 
 	t.Run("multiple branches with conflict", func(t *testing.T) {
@@ -50,8 +52,10 @@ func TestMerge(t *testing.T) {
 		result, fail := repo.Merge("Merge multi1, multi2, multi3 into main", base, ref1, ref2, ref3)
 		assert.Nil(t, result)
 		assert.NotNil(t, fail)
-		assert.Contains(t, fail.ConflictBranches, "multi1")
-		assert.Equal(t, "multi3", fail.ConflictBranches[len(fail.ConflictBranches)-1])
+		if mergeFail, ok := fail.(*models.GitMergeFailResult); assert.True(t, ok) {
+			assert.Contains(t, mergeFail.ConflictBranches, "multi1")
+			assert.Equal(t, "multi3", mergeFail.ConflictBranches[len(mergeFail.ConflictBranches)-1])
+		}
 	})
 }
 

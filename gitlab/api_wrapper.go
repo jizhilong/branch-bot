@@ -36,16 +36,31 @@ func (h *Webhook) awardEmoji(note *gitlab.IssueCommentEvent, emoji string) {
 	}
 }
 
+type MergeRequestLookupError struct {
+	mrId int
+	err  string
+}
+
+func (e MergeRequestLookupError) Error() string {
+	return fmt.Sprintf("failed to get merge request %d: %s", e.mrId, e.err)
+}
+
 func (h *Webhook) revParseRemote(projectId int, branchName string) (*models.GitRef, error) {
 	if strings.HasPrefix(branchName, "!") {
 		mrIdStr := strings.TrimPrefix(branchName, "!")
 		mrId, err := strconv.Atoi(mrIdStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid merge request ID: %w", err)
+			return nil, MergeRequestLookupError{
+				mrId: mrId,
+				err:  fmt.Sprintf("invalid merge request ID: %s", err.Error()),
+			}
 		}
 		mr, _, err := h.gl.MergeRequests.GetMergeRequest(projectId, mrId, nil)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get merge request: %w", err)
+			return nil, MergeRequestLookupError{
+				mrId: mrId,
+				err:  fmt.Sprintf("failed to get merge request: %s", err.Error()),
+			}
 		}
 		return &models.GitRef{Name: mr.SourceBranch, Commit: mr.DiffRefs.HeadSha}, nil
 	} else {

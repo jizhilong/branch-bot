@@ -11,6 +11,31 @@ type GitRef struct {
 	Commit string // commit SHA
 }
 
+type CommandExecResult struct {
+	Cmdline string // the git command that was executed
+	Stdout  string // command stdout
+	Stderr  string // command stderr
+	Status  string // command exit status, empty if success
+}
+
+type CommandExecFail CommandExecResult
+
+func (r *CommandExecFail) Error() string {
+	return fmt.Sprintf("%s failed: %s %s", r.Cmdline, r.Status, r.Stderr)
+}
+
+// AsMarkdown formats the command execution result as markdown
+func (r *CommandExecFail) AsMarkdown() string {
+	var messages []string
+	// Add merge failure summary
+	messages = append(messages, "\n<details><summary>command execution error</summary>\n\n"+
+		fmt.Sprintf("**commandline**: \n```\n%s\n```\n\n", r.Cmdline)+
+		fmt.Sprintf("**stdout**: \n```\n%s\n```\n\n", r.Stdout)+
+		fmt.Sprintf("**stderr**: \n```\n%s\n```\n", r.Stderr)+
+		"</details>")
+	return strings.Join(messages, "\n")
+}
+
 func (r *GitRef) String() string {
 	return fmt.Sprintf("%s (%s)", r.Name, r.Commit)
 }
@@ -24,10 +49,7 @@ type FileMergeConflict struct {
 
 // GitMergeFailResult represents a failed merge operation
 type GitMergeFailResult struct {
-	Cmdline          string              // the git command that was executed
-	Stdout           string              // command stdout
-	Stderr           string              // command stderr
-	Status           string              // command exit status
+	CommandExecFail
 	FailedFiles      []FileMergeConflict // files with conflicts
 	ConflictBranches []string            // branches that conflict with the new branch
 }
@@ -38,14 +60,9 @@ func (r *GitMergeFailResult) Error() string {
 
 // AsMarkdown formats the merge result as markdown
 func (r *GitMergeFailResult) AsMarkdown() string {
-	messages := []string{}
-
-	// Add merge failure summary
-	messages = append(messages, "\n<details><summary>error summary</summary>\n\n"+
-		fmt.Sprintf("**commandline**: \n```\n%s\n```\n\n", r.Cmdline)+
-		fmt.Sprintf("**stdout**: \n```\n%s\n```\n\n", r.Stdout)+
-		fmt.Sprintf("**stderr**: \n```\n%s\n```\n", r.Stderr)+
-		"</details>")
+	messages := []string{
+		(r.CommandExecFail).AsMarkdown(),
+	}
 
 	// Add conflict branches if any
 	if len(r.ConflictBranches) > 0 {

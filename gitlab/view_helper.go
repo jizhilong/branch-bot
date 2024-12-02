@@ -76,7 +76,7 @@ func errorToMarkdown(err error) string {
 	if err == nil {
 		return ""
 	}
-	if mdError, ok := err.(*models.GitMergeFailResult); ok {
+	if mdError, ok := err.(models.MarkdownAble); ok {
 		return mdError.AsMarkdown()
 	}
 	errorString := err.Error()

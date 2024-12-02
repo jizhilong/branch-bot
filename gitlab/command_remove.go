@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jizhilong/light-merge/core"
 	"github.com/xanzy/go-gitlab"
@@ -22,9 +23,10 @@ func (c *RemoveCommand) CommandName() string {
 func (c *RemoveCommand) Process(h *Webhook, event *gitlab.IssueCommentEvent, logger *slog.Logger, operator *core.MergeTrainOperator) {
 	logger = logger.With("branch", c.BranchName)
 	ref, err := h.revParseRemote(event.ProjectID, c.BranchName)
-	if err != nil {
+	var mrLookupErr MergeRequestLookupError
+	if err != nil && errors.As(err, &mrLookupErr) {
 		logger.Error("Failed to get remote ref", "error", err)
-		go h.reply(event, fmt.Sprintf("branch %s not found.", c.BranchName))
+		go h.reply(event, fmt.Sprintf("merge request %s lookup failed ", c.BranchName))
 		return
 	}
 	result, fail := operator.RemoveAndPush(ref.Name)

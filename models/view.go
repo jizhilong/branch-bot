@@ -40,6 +40,11 @@ type CommitView struct {
 	URL string
 }
 
+// MarkdownAble is an interface for types that can be rendered as markdown
+type MarkdownAble interface {
+	AsMarkdown() string
+}
+
 // RenderMermaid generates a mermaid graph representation
 func (v *MergeTrainView) RenderMermaid() string {
 	if len(v.Members) == 0 {

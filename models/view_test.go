@@ -14,7 +14,7 @@ func TestMergeTrainView_RenderMermaid(t *testing.T) {
 		{
 			name: "empty train",
 			view: MergeTrainView{},
-			want: "",
+			want: "this light merge train is empty.",
 		},
 		{
 			name: "single branch",

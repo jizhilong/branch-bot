@@ -9,6 +9,11 @@ import (
 )
 
 func main() {
+	// setup slog to include source location
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: true,
+	})
+	slog.SetDefault(slog.New(handler))
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
