@@ -41,15 +41,3 @@ func Load() (*Config, error) {
 	}
 	return config, nil
 }
-
-func canRenderWithInteger(template string) bool {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered in canRenderWithInteger:", r)
-		}
-	}()
-
-	// Try to format the string with an integer
-	_ = fmt.Sprintf(template, 1)
-	return true
-}
