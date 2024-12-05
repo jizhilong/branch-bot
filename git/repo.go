@@ -42,6 +42,10 @@ func SyncRepo(repoPath, remoteUrl string) (*Repo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open repository: %w", err)
 		}
+		err = repo.EnsureRemote("origin", remoteUrl)
+		if err != nil {
+			return nil, fmt.Errorf("failed to ensure remote: %w", err)
+		}
 		err = repo.RefreshRemote()
 		if err != nil {
 			return nil, fmt.Errorf("failed to refresh remote: %w", err)
@@ -270,6 +274,20 @@ func (r *Repo) EnsureBranch(name string, commit string) error {
 	} else {
 		return r.execCommandError("git", "branch", "-f", name, commit)
 	}
+}
+
+// EnsureRemote ensures a remote exists and points to the specified URL
+func (r *Repo) EnsureRemote(name string, url string) error {
+	if res, err := r.execCommand("git", "remote", "get-url", name); err != nil {
+		if strings.Contains(err.Stderr, "No such remote") {
+			return r.execCommandError("git", "remote", "add", name, url)
+		} else {
+			return err
+		}
+	} else if strings.TrimSpace(res.Stdout) != url {
+		return r.execCommandError("git", "remote", "set-url", name, url)
+	}
+	return nil
 }
 
 // RefreshRemote fetches the latest changes from the remote repository

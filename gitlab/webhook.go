@@ -128,7 +128,6 @@ func (h *Webhook) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		)
 		operator, err := h.getOperator(e.ProjectID, e.Issue.IID, e.Project.PathWithNamespace, e.Project.GitHTTPURL)
 		if err != nil {
-			logger.Error("Failed to get operator", "error", err)
 			h.reply(e, fmt.Sprintf("failed to initialize repo: %s", err))
 			return
 		}
@@ -171,12 +170,14 @@ func (h *Webhook) parseGitlabEvent(r *http.Request) (interface{}, error) {
 func (h *Webhook) getOperator(projectId, issueIID int, pathWithNameSpace, projectUrl string) (*core.MergeTrainOperator, error) {
 	u, err := url.Parse(projectUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse project URL: %w", err)
+		slog.Error("Failed to parse project URL", "error", err)
+		return nil, fmt.Errorf("invalid project URL")
 	}
 	remoteUrl := fmt.Sprintf("%s://branch-bot:%s@%s%s", u.Scheme, h.glToken, u.Host, u.Path)
 	repoPath := fmt.Sprintf("%s/%s", h.repoDir, pathWithNameSpace)
 	if repo, err := git.SyncRepo(repoPath, remoteUrl); err != nil {
-		return nil, fmt.Errorf("failed to sync repository: %w", err)
+		slog.Error("Failed to sync repo", "error", err)
+		return nil, fmt.Errorf("failed to sync repo")
 	} else {
 		branchName := fmt.Sprintf("%s%d", h.branchNamePrefix, issueIID)
 		return core.LoadMergeTrainOperator(repo, branchName, projectId, issueIID)
