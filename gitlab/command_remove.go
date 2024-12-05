@@ -3,7 +3,7 @@ package gitlab
 import (
 	"errors"
 	"fmt"
-	"github.com/jizhilong/light-merge/core"
+	"github.com/jizhilong/branch-bot/core"
 	"github.com/xanzy/go-gitlab"
 	"log/slog"
 )

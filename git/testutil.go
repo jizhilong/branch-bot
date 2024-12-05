@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jizhilong/light-merge/models"
+	"github.com/jizhilong/branch-bot/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +18,7 @@ type TestRepo struct {
 // NewTestRepo creates a new test repository
 func NewTestRepo(t *testing.T) *TestRepo {
 	// Create a temporary directory for the test repo
-	tmpDir, err := os.MkdirTemp("", "light-merge-test-*")
+	tmpDir, err := os.MkdirTemp("", "bb-test-*")
 	require.NoError(t, err)
 	r := &TestRepo{Repo: Repo{path: tmpDir}, t: t}
 

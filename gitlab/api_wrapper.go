@@ -2,7 +2,7 @@ package gitlab
 
 import (
 	"fmt"
-	"github.com/jizhilong/light-merge/models"
+	"github.com/jizhilong/branch-bot/models"
 	"log/slog"
 	"strconv"
 	"strings"

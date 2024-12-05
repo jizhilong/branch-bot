@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jizhilong/light-merge/models"
+	"github.com/jizhilong/branch-bot/models"
 )
 
 // Repo represents a Git repository
@@ -31,10 +31,10 @@ func SyncRepo(repoPath, remoteUrl string) (*Repo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to clone repository: %w", err)
 		}
-		if err = repo.Config("user.name", "light-merge"); err != nil {
+		if err = repo.Config("user.name", "branch-bot"); err != nil {
 			return nil, fmt.Errorf("failed to set user name: %w", err)
 		}
-		if err = repo.Config("user.email", "operator@light-merge.localhost"); err != nil {
+		if err = repo.Config("user.email", "operator@branch-bot.localhost"); err != nil {
 			return nil, fmt.Errorf("failed to set user email: %w", err)
 		}
 	} else {

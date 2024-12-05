@@ -1,4 +1,4 @@
-module github.com/jizhilong/light-merge
+module github.com/jizhilong/branch-bot
 
 go 1.23
 

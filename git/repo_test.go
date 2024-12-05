@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/jizhilong/light-merge/models"
+	"github.com/jizhilong/branch-bot/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -116,7 +116,7 @@ func TestGetCommitMessage(t *testing.T) {
 
 func TestSyncRepo(t *testing.T) {
 	projectPath := "test-repo"
-	repoDir, err := os.MkdirTemp("", "light-merge-test-*")
+	repoDir, err := os.MkdirTemp("", "bb-test-*")
 	assert.NoError(t, err)
 	defer os.RemoveAll(repoDir)
 	repoPath := fmt.Sprintf("%s/%s", repoDir, projectPath)

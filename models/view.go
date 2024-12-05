@@ -72,17 +72,17 @@ func (v *MergeTrainView) RenderMermaid() string {
 			commit = m.MergedCommit.SHA[:8]
 		}
 
-		// For first node, add light-merge node definition
+		// For first node, add branch-bot node definition
 		if idx == 0 {
-			lmNode := fmt.Sprintf("LM[(\"%s(%s)\")]", v.Branch, v.Commit.SHA[:8])
-			graph = append(graph, fmt.Sprintf("m%d(\"%s\") -- %s --> %s;", idx, name, commit, lmNode))
+			node := fmt.Sprintf("BB[(\"%s(%s)\")]", v.Branch, v.Commit.SHA[:8])
+			graph = append(graph, fmt.Sprintf("m%d(\"%s\") -- %s --> %s;", idx, name, commit, node))
 		} else {
-			graph = append(graph, fmt.Sprintf("m%d(\"%s\") -- %s --> LM;", idx, name, commit))
+			graph = append(graph, fmt.Sprintf("m%d(\"%s\") -- %s --> BB;", idx, name, commit))
 		}
 	}
 
 	// Add click events for links
-	graph = append(graph, fmt.Sprintf("click LM \"%s\" _blank", v.URL))
+	graph = append(graph, fmt.Sprintf("click BB \"%s\" _blank", v.URL))
 	for idx, m := range v.Members {
 		url := m.BranchURL
 		if m.MergeRequest != nil {
@@ -106,7 +106,7 @@ func (v *MergeTrainView) RenderTable() string {
 		"| ------ | ------------ | ------------- | ------------- | ---- |",
 	}
 
-	// Add light-merge branch status
+	// Add bb branch status
 	trainCommit := "null"
 	if v.Commit != nil {
 		trainCommit = fmt.Sprintf("[%s](%s)", v.Commit.SHA[:8], v.Commit.URL)
@@ -139,7 +139,7 @@ func (v *MergeTrainView) RenderTable() string {
 		// Add update hint if needed
 		hint := ""
 		if m.LatestCommit != nil && (m.MergedCommit == nil || m.LatestCommit.SHA != m.MergedCommit.SHA) {
-			hint = fmt.Sprintf("Update to latest: `!lm add %s`", m.Branch)
+			hint = fmt.Sprintf("Update to latest: `!bb add %s`", m.Branch)
 		}
 
 		table = append(table, fmt.Sprintf("| %s | %s | %s | %s | %s |", branch, mr, merged, latest, hint))

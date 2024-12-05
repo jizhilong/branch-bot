@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/jizhilong/light-merge/config"
-	"github.com/jizhilong/light-merge/gitlab"
+	"github.com/jizhilong/branch-bot/config"
+	"github.com/jizhilong/branch-bot/gitlab"
 )
 
 func main() {

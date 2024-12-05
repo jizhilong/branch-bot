@@ -3,8 +3,8 @@ package gitlab
 import (
 	"errors"
 	"fmt"
-	"github.com/jizhilong/light-merge/core"
-	"github.com/jizhilong/light-merge/git"
+	"github.com/jizhilong/branch-bot/core"
+	"github.com/jizhilong/branch-bot/git"
 	"github.com/xanzy/go-gitlab"
 	"io"
 	"log"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-// Webhook handles HTTP requests for light-merge
+// Webhook handles HTTP requests for branch-bot
 type Webhook struct {
 	// port is the port number to listen on
 	port int
@@ -58,12 +58,12 @@ type Command interface {
 
 // ParseCommand parses a command from issue comment
 func ParseCommand(comment string) (Command, error) {
-	// Expected format: !lm <command> [args...]
+	// Expected format: !bb <command> [args...]
 	comment = strings.TrimSpace(comment)
-	if !strings.HasPrefix(comment, "!lm ") {
+	if !strings.HasPrefix(comment, "!bb ") {
 		return nil, fmt.Errorf("invalid command format")
 	}
-	comment = strings.TrimPrefix(comment, "!lm ")
+	comment = strings.TrimPrefix(comment, "!bb ")
 	parts := strings.Split(comment, " ")
 	if len(parts) < 1 {
 		return nil, fmt.Errorf("missing command")
@@ -173,7 +173,7 @@ func (h *Webhook) getOperator(projectId, issueIID int, pathWithNameSpace, projec
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse project URL: %w", err)
 	}
-	remoteUrl := fmt.Sprintf("%s://light-merge:%s@%s%s", u.Scheme, h.glToken, u.Host, u.Path)
+	remoteUrl := fmt.Sprintf("%s://branch-bot:%s@%s%s", u.Scheme, h.glToken, u.Host, u.Path)
 	repoPath := fmt.Sprintf("%s/%s", h.repoDir, pathWithNameSpace)
 	if repo, err := git.SyncRepo(repoPath, remoteUrl); err != nil {
 		return nil, fmt.Errorf("failed to sync repository: %w", err)

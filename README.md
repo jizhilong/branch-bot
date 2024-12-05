@@ -1,8 +1,10 @@
-# Light-Merge
+# branch-bot
 
-Light-Merge is a GitLab-based branch management tool that helps teams safely merge multiple feature branches into a testing branch. It operates entirely through GitLab issue comments, providing a lightweight, conflict-aware approach to managing parallel development workflows.
+branch-bot is a GitLab-based branch management tool to help teams safely merge multiple feature branches.
+It operates entirely through GitLab issue comments, providing a lightweight,
+conflict-aware approach to managing parallel development workflows.
 
-![Light Merge Workflow](/docs/images/light-merge-workflow.jpg)
+![](/docs/images/bb-workflow.jpg)
 
 ## Key Features
 
@@ -13,7 +15,7 @@ Light-Merge is a GitLab-based branch management tool that helps teams safely mer
 - **CI/CD Integration**: Built-in support for GitLab CI pipelines and deployment workflows
 - **Stateful Management**: Track the state of merged branches and their relationships through GitLab issues
 
-## Why Light-Merge?
+## Why branch-bot?
 
 When multiple teams work on different features in parallel, integrating their changes for testing becomes challenging:
 
@@ -22,7 +24,7 @@ When multiple teams work on different features in parallel, integrating their ch
 - Testing environments become unstable due to incompatible changes
 - It's difficult to track which features are included in each testing branch
 
-Light-Merge solves these problems by providing:
+branch-bot solves these problems by providing:
 
 - Automated, conflict-aware branch merging
 - Clear visibility into the composition of testing branches
@@ -39,33 +41,33 @@ Light-Merge solves these problems by providing:
 
 ### Basic Usage
 
-1. Create an issue in your GitLab project with the label: **light-merge**
-2. Add branches using the command: `!lm add <branch_name>` or `!lm !<merge_request_iid>`
-3. View the current light-merge status with: `!lm status`
+1. Create an issue in your GitLab project with the label: **branch-bot**
+2. Add branches using the command: `!bb add <branch_name>` or `!bb !<merge_request_iid>`
+3. View the current branch-bot status with: `!bb status`
 
 ### Available Commands
 
 | Command | Description |
 | ------- | ----------- |
-| `!lm` | View current light-merge status |
-| `!lm add <branch/!mr-id>` | Add or update a branch/merge request |
-| `!lm remove <branch/!mr-id>` | Remove a branch/merge request |
-| `!lm reset [--base master]` | Reset light-merge to specified base branch |
-| `!lm fork` | Create new light-merge issue with current state |
+| `!bb` | View current branch-bot status |
+| `!bb add <branch/!mr-id>` | Add or update a branch/merge request |
+| `!bb remove <branch/!mr-id>` | Remove a branch/merge request |
+| `!bb reset [--base master]` | Reset branch-bot to specified base branch |
+| `!bb fork` | Create new branch-bot issue with current state |
 
 ### CI/CD Integration
 
-Light-Merge automatically creates branches with the pattern `light-merges/\d+`. You can configure GitLab CI to run specific jobs for these branches:
+branch-bot automatically creates branches with the pattern `bb-branches/\d+`. You can configure GitLab CI to run specific jobs for these branches:
 
 ```yaml
 rules:
-  - if: '$CI_COMMIT_BRANCH =~ /light\-merges\/.*/ && $CI_PIPELINE_SOURCE == "push"'
+  - if: '$CI_COMMIT_BRANCH =~ /bb\-branches\/.*/ && $CI_PIPELINE_SOURCE == "push"'
     when: always
 ```
 
 ## Core Principles
 
-Light-Merge is built on several key principles for effective branch management:
+branch-bot is built on several key principles for effective branch management:
 
 1. **Prevent Conflicts, Don't Just Resolve Them**: Focus on code organization and clear ownership to minimize conflicts
 2. **Last Update Responsibility**: The last team to update their branch is responsible for resolving conflicts
@@ -79,7 +81,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-Light-Merge was inspired by:
+branch-bot was inspired by:
 
 - Ctrip's ["Light Merge Accelerator"](https://cloud.tencent.com/developer/article/1157076) concept
-- GitLab's [Merge Trains](https://docs.gitlab.com/ee/ci/pipelines/merge_trains.html) feature, though Light-Merge takes a different approach by focusing on testing branch management rather than production merges
+- GitLab's [Merge Trains](https://docs.gitlab.com/ee/ci/pipelines/merge_trains.html) feature, though branch-bot takes a different approach by focusing on testing branch management rather than production merges

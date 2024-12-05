@@ -21,7 +21,7 @@ type MergeTrain struct {
 type MergeTrainItem struct {
 	ProjectID    int    // GitLab project ID
 	Branch       string // branch name
-	MergedCommit string // commit that has been merged into light-merge branch
+	MergedCommit string // commit that has been merged into bb branch
 }
 
 // NewMergeTrain creates a new merge train
@@ -54,7 +54,7 @@ func (mt *MergeTrain) RemoveMember(branch string) {
 	mt.Members = newMembers
 }
 
-// GenerateCommitMessage creates a commit message for the light-merge branch
+// GenerateCommitMessage creates a commit message for the bb branch
 func (mt *MergeTrain) GenerateCommitMessage() string {
 	data, err := json.MarshalIndent(mt, "", "  ")
 	if err != nil {
@@ -64,7 +64,7 @@ func (mt *MergeTrain) GenerateCommitMessage() string {
 	return fmt.Sprintf("Light-Merge State\n\n%s", string(data))
 }
 
-// GenerateCommitMessageWithNewMemberSet creates a commit message for the light-merge branch with new members, but don't add them to the merge train
+// GenerateCommitMessageWithNewMemberSet creates a commit message for the bb branch with new members, but don't add them to the merge train
 func (mt *MergeTrain) GenerateCommitMessageWithNewMemberSet(newMembers []MergeTrainItem) string {
 	originalMembers := mt.Members
 	defer func() { mt.Members = originalMembers }()

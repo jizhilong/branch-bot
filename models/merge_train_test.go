@@ -6,7 +6,7 @@ import (
 
 func TestGenerateAndLoadCommitMessage(t *testing.T) {
 	// Create a new MergeTrain and add members
-	mtOriginal := NewMergeTrain(123, 456, "light-merges/1")
+	mtOriginal := NewMergeTrain(123, 456, "bb-branches/1")
 	mtOriginal.AddMember("feature-1", "abc123")
 	mtOriginal.AddMember("feature-2", "def456")
 

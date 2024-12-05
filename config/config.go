@@ -17,24 +17,24 @@ type Config struct {
 
 func Load() (*Config, error) {
 	config := &Config{
-		GitlabUrl:        os.Getenv("LM_GITLAB_URL"),
-		GitlabToken:      os.Getenv("LM_GITLAB_TOKEN"),
-		RepoDirectory:    os.Getenv("LM_REPO_DIRECTORY"),
-		BranchNamePrefix: os.Getenv("LM_BRANCH_NAME_PREFIX"),
+		GitlabUrl:        os.Getenv("BB_GITLAB_URL"),
+		GitlabToken:      os.Getenv("BB_GITLAB_TOKEN"),
+		RepoDirectory:    os.Getenv("BB_REPO_DIRECTORY"),
+		BranchNamePrefix: os.Getenv("BB_BRANCH_NAME_PREFIX"),
 		ListenPort:       8181,
 	}
 	var errors []string
 	if config.GitlabUrl == "" {
-		errors = append(errors, "LM_GITLAB_URL is required")
+		errors = append(errors, "BB_GITLAB_URL is required")
 	}
 	if config.GitlabToken == "" {
-		errors = append(errors, "LM_GITLAB_TOKEN is required")
+		errors = append(errors, "BB_GITLAB_TOKEN is required")
 	}
 	if config.RepoDirectory == "" {
-		config.RepoDirectory = "/tmp/light-merge-builds"
+		config.RepoDirectory = "/tmp/bb-builds"
 	}
 	if config.BranchNamePrefix == "" {
-		config.BranchNamePrefix = "light-merges/"
+		config.BranchNamePrefix = "bb-branches/"
 	}
 	if len(errors) > 0 {
 		return nil, fmt.Errorf("missing required environment variables: %s", errors)

@@ -19,8 +19,8 @@ func TestMergeTrainView_RenderMermaid(t *testing.T) {
 		{
 			name: "single branch",
 			view: MergeTrainView{
-				Branch: "light-merges/42",
-				URL:    "https://gitlab.com/demo/project/-/tree/light-merges/42",
+				Branch: "bb-branches/42",
+				URL:    "https://gitlab.com/demo/project/-/tree/bb-branches/42",
 				Commit: &CommitView{
 					SHA: "f9e8d7c6b5a4321",
 					URL: "https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321",
@@ -39,8 +39,8 @@ func TestMergeTrainView_RenderMermaid(t *testing.T) {
 			want: strings.Join([]string{
 				"```mermaid",
 				"graph LR",
-				`m0("main") -- a1b2c3d4 --> LM[("light-merges/42(f9e8d7c6)")];`,
-				`click LM "https://gitlab.com/demo/project/-/tree/light-merges/42" _blank`,
+				`m0("main") -- a1b2c3d4 --> BB[("bb-branches/42(f9e8d7c6)")];`,
+				`click BB "https://gitlab.com/demo/project/-/tree/bb-branches/42" _blank`,
 				`click m0 "https://gitlab.com/demo/project/-/tree/main" _blank`,
 				"```",
 			}, "\n"),
@@ -48,8 +48,8 @@ func TestMergeTrainView_RenderMermaid(t *testing.T) {
 		{
 			name: "multiple branches with MR",
 			view: MergeTrainView{
-				Branch: "light-merges/42",
-				URL:    "https://gitlab.com/demo/project/-/tree/light-merges/42",
+				Branch: "bb-branches/42",
+				URL:    "https://gitlab.com/demo/project/-/tree/bb-branches/42",
 				Commit: &CommitView{
 					SHA: "f9e8d7c6b5a4321",
 					URL: "https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321",
@@ -82,9 +82,9 @@ func TestMergeTrainView_RenderMermaid(t *testing.T) {
 			want: strings.Join([]string{
 				"```mermaid",
 				"graph LR",
-				`m0("main") -- a1b2c3d4 --> LM[("light-merges/42(f9e8d7c6)")];`,
-				`m1("!123 - Add user authentication API") -- b2c3d4e5 --> LM;`,
-				`click LM "https://gitlab.com/demo/project/-/tree/light-merges/42" _blank`,
+				`m0("main") -- a1b2c3d4 --> BB[("bb-branches/42(f9e8d7c6)")];`,
+				`m1("!123 - Add user authentication API") -- b2c3d4e5 --> BB;`,
+				`click BB "https://gitlab.com/demo/project/-/tree/bb-branches/42" _blank`,
 				`click m0 "https://gitlab.com/demo/project/-/tree/main" _blank`,
 				`click m1 "https://gitlab.com/demo/project/-/merge_requests/123" _blank`,
 				"```",
@@ -115,8 +115,8 @@ func TestMergeTrainView_RenderTable(t *testing.T) {
 		{
 			name: "single branch",
 			view: MergeTrainView{
-				Branch: "light-merges/42",
-				URL:    "https://gitlab.com/demo/project/-/tree/light-merges/42",
+				Branch: "bb-branches/42",
+				URL:    "https://gitlab.com/demo/project/-/tree/bb-branches/42",
 				Commit: &CommitView{
 					SHA: "f9e8d7c6b5a4321",
 					URL: "https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321",
@@ -135,15 +135,15 @@ func TestMergeTrainView_RenderTable(t *testing.T) {
 			want: strings.Join([]string{
 				"| Branch | Merge Request | Merged Commit | Latest Commit | Note |",
 				"| ------ | ------------ | ------------- | ------------- | ---- |",
-				"| [light-merges/42](https://gitlab.com/demo/project/-/tree/light-merges/42) | null | null | [f9e8d7c6](https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321) |  |",
+				"| [bb-branches/42](https://gitlab.com/demo/project/-/tree/bb-branches/42) | null | null | [f9e8d7c6](https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321) |  |",
 				"| [main](https://gitlab.com/demo/project/-/tree/main) | null | [a1b2c3d4](https://gitlab.com/demo/project/-/commit/a1b2c3d4e5f6789) | null |  |",
 			}, "\n"),
 		},
 		{
 			name: "branch needs update",
 			view: MergeTrainView{
-				Branch: "light-merges/42",
-				URL:    "https://gitlab.com/demo/project/-/tree/light-merges/42",
+				Branch: "bb-branches/42",
+				URL:    "https://gitlab.com/demo/project/-/tree/bb-branches/42",
 				Commit: &CommitView{
 					SHA: "f9e8d7c6b5a4321",
 					URL: "https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321",
@@ -166,8 +166,8 @@ func TestMergeTrainView_RenderTable(t *testing.T) {
 			want: strings.Join([]string{
 				"| Branch | Merge Request | Merged Commit | Latest Commit | Note |",
 				"| ------ | ------------ | ------------- | ------------- | ---- |",
-				"| [light-merges/42](https://gitlab.com/demo/project/-/tree/light-merges/42) | null | null | [f9e8d7c6](https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321) |  |",
-				"| [feature/auth](https://gitlab.com/demo/project/-/tree/feature/auth) | null | [a1b2c3d4](https://gitlab.com/demo/project/-/commit/a1b2c3d4e5f6789) | [b2c3d4e5](https://gitlab.com/demo/project/-/commit/b2c3d4e5f6789a) | Update to latest: `!lm add feature/auth` |",
+				"| [bb-branches/42](https://gitlab.com/demo/project/-/tree/bb-branches/42) | null | null | [f9e8d7c6](https://gitlab.com/demo/project/-/commit/f9e8d7c6b5a4321) |  |",
+				"| [feature/auth](https://gitlab.com/demo/project/-/tree/feature/auth) | null | [a1b2c3d4](https://gitlab.com/demo/project/-/commit/a1b2c3d4e5f6789) | [b2c3d4e5](https://gitlab.com/demo/project/-/commit/b2c3d4e5f6789a) | Update to latest: `!bb add feature/auth` |",
 			}, "\n"),
 		},
 	}

@@ -3,8 +3,8 @@ package core
 import (
 	"testing"
 
-	"github.com/jizhilong/light-merge/git"
-	"github.com/jizhilong/light-merge/models"
+	"github.com/jizhilong/branch-bot/git"
+	"github.com/jizhilong/branch-bot/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ func TestMergeTrainOperator_Add(t *testing.T) {
 		mergeTrain: &models.MergeTrain{
 			ProjectID:  123,
 			IssueIID:   456,
-			BranchName: "light-merges/456",
+			BranchName: "bb-branches/456",
 			Members:    make([]models.MergeTrainItem, 0),
 		},
 	}
@@ -82,7 +82,7 @@ func TestMergeTrainOperator_Remove(t *testing.T) {
 		mergeTrain: &models.MergeTrain{
 			ProjectID:  123,
 			IssueIID:   456,
-			BranchName: "light-merges/456",
+			BranchName: "bb-branches/456",
 			Members:    make([]models.MergeTrainItem, 0),
 		},
 	}
@@ -159,7 +159,7 @@ func TestLoadMergeTrainOperator(t *testing.T) {
 	baseHash, err := testRepo.RevParse("HEAD")
 	require.NoError(t, err)
 	base := &models.GitRef{Name: "main", Commit: baseHash}
-	branchName := "light-merges/456"
+	branchName := "bb-branches/456"
 
 	t.Run("load non-existent merge train", func(t *testing.T) {
 		operator, err := LoadMergeTrainOperator(repo, branchName, 123, 456)

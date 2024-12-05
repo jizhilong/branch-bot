@@ -3,8 +3,8 @@ package core
 import (
 	"fmt"
 
-	"github.com/jizhilong/light-merge/git"
-	"github.com/jizhilong/light-merge/models"
+	"github.com/jizhilong/branch-bot/git"
+	"github.com/jizhilong/branch-bot/models"
 )
 
 // MergeTrainOperator handles operations on a merge train
@@ -124,7 +124,7 @@ func (o *MergeTrainOperator) Add(ref *models.GitRef) (*models.GitRef, error) {
 	// Only update merge train state if merge was successful
 	o.mergeTrain.Members = newMembers
 
-	// Create or update the light-merge branch
+	// Create or update the bb branch
 	err := o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (o *MergeTrainOperator) RemoveAndPush(branchName string) (*models.GitRef, e
 	return mergeResult, nil
 }
 
-// Remove removes a branch from the merge train and updates the light-merge branch
+// Remove removes a branch from the merge train and updates the bb branch
 func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, error) {
 	// Check if branch exists in merge train
 	var branchIndex = -1
@@ -208,7 +208,7 @@ func (o *MergeTrainOperator) Remove(branchName string) (*models.GitRef, error) {
 	// Update merge train state
 	o.mergeTrain.Members = currentMembers
 
-	// Update the light-merge branch
+	// Update the bb branch
 	err := o.repo.EnsureBranch(o.mergeTrain.BranchName, mergeResult.Commit)
 	if err != nil {
 		return nil, err
@@ -239,10 +239,10 @@ func (o *MergeTrainOperator) getMergeTrainView(helper MergeTrainViewHelper) (*mo
 		return view, nil
 	}
 
-	// Get light-merge branch latest commit
+	// Get bb branch latest commit
 	trainCommit, err := repo.RevParse(mt.BranchName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get light-merge branch commit: %w", err)
+		return nil, fmt.Errorf("failed to get bb branch commit: %w", err)
 	}
 	view.Commit = &models.CommitView{
 		SHA: trainCommit,
